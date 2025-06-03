@@ -11,3 +11,5 @@ Route::get('/universities', [StatsController::class, 'allUniversities']);
 Route::get('/degrees', [StatsController::class, 'allDegrees']);
 Route::get('/theses/years', [StatsController::class, 'allYears']);
 Route::get('/theses/search', [StatsController::class, 'searchTheses']);
+Route::put('/theses/{id}', [StatsController::class, 'updateThesis']);
+Route::delete('/theses/{id}', [StatsController::class, 'deleteThesis']);
