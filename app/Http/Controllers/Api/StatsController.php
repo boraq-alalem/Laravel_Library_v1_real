@@ -32,4 +32,61 @@ class StatsController extends Controller
             'total_specializations' => $totalSpecializations,
         ]);
     }
+
+    public function latestTheses()
+    {
+        $theses = Thesis::with(['author', 'university', 'specialization', 'degree'])
+            ->latest('id')
+            ->take(10)
+            ->get();
+        return response()->json($theses);
+    }
+
+    public function searchTheses(Request $request)
+    {
+        $query = Thesis::with(['author', 'university', 'specialization', 'degree']);
+        if ($request->filled('author')) {
+            $query->whereHas('author', function($q) use ($request) {
+                $q->where('name', 'like', '%' . $request->author . '%');
+            });
+        }
+        if ($request->filled('title')) {
+            $query->where('title', 'like', '%' . $request->title . '%');
+        }
+        if ($request->filled('specialization_id')) {
+            $query->where('specialization_id', $request->specialization_id);
+        }
+        if ($request->filled('university_id')) {
+            $query->where('university_id', $request->university_id);
+        }
+        if ($request->filled('degree_id')) {
+            $query->where('degree_id', $request->degree_id);
+        }
+        if ($request->filled('year')) {
+            $query->where('year', $request->year);
+        }
+        $theses = $query->latest('id')->paginate(15);
+        return response()->json($theses);
+    }
+
+    public function allSpecializations()
+    {
+        return response()->json(Specialization::all(['id', 'name']));
+    }
+
+    public function allUniversities()
+    {
+        return response()->json(University::all(['id', 'name']));
+    }
+
+    public function allDegrees()
+    {
+        return response()->json(Degree::all(['id', 'name']));
+    }
+
+    public function allYears()
+    {
+        $years = Thesis::select('year')->distinct()->orderBy('year', 'desc')->pluck('year');
+        return response()->json($years);
+    }
 }
