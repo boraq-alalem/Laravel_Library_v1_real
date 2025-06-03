@@ -89,4 +89,20 @@ class StatsController extends Controller
         $years = Thesis::select('year')->distinct()->orderBy('year', 'desc')->pluck('year');
         return response()->json($years);
     }
+
+    public function updateThesis(Request $request, $id)
+    {
+        $thesis = Thesis::findOrFail($id);
+        $thesis->update($request->only([
+            'title', 'year', 'pdf_path', 'university_id', 'specialization_id', 'degree_id', 'author_id'
+        ]));
+        return response()->json(['message' => 'تم التعديل بنجاح', 'thesis' => $thesis->fresh()]);
+    }
+
+    public function deleteThesis($id)
+    {
+        $thesis = Thesis::findOrFail($id);
+        $thesis->delete();
+        return response()->json(['message' => 'تم الحذف بنجاح']);
+    }
 }
