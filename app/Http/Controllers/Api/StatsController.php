@@ -105,4 +105,66 @@ class StatsController extends Controller
         $thesis->delete();
         return response()->json(['message' => 'تم الحذف بنجاح']);
     }
+
+    public function universitiesWithSpecializations()
+    {
+        $universities = University::with('specializations:id,name')->get(['id', 'name']);
+        return response()->json($universities);
+    }
+
+    public function addSpecializationToUniversity(Request $request, $universityId)
+    {
+        $request->validate([
+            'specialization_id' => 'required|exists:specializations,id',
+        ]);
+        $university = University::findOrFail($universityId);
+        $university->specializations()->syncWithoutDetaching([$request->specialization_id]);
+        return response()->json(['message' => 'تمت إضافة التخصص للجامعة بنجاح']);
+    }
+
+    public function searchUniversities(Request $request)
+    {
+        $query = University::with('specializations:id,name');
+        if ($request->filled('name')) {
+            $query->where('name', 'like', '%' . $request->name . '%');
+        }
+        $universities = $query->get(['id', 'name']);
+        return response()->json($universities);
+    }
+
+    public function storeThesis(Request $request)
+    {
+        $validated = $request->validate([
+            'title' => 'required|string|max:1024',
+            'year' => 'required|string',
+            'university_id' => 'required|exists:universities,id',
+            'specialization_id' => 'required|exists:specializations,id',
+            'degree_id' => 'required|exists:degrees,id',
+            'author_name' => 'required|string|max:255',
+            'pdf' => 'required|file|mimes:pdf|max:20480', // 20MB
+        ]);
+
+        // إنشاء أو جلب الباحث
+        $author = Author::firstOrCreate(['name' => $validated['author_name']]);
+
+        // رفع ملف PDF
+        $pdfPath = $request->file('pdf')->store('theses', 'public');
+
+        // إنشاء الرسالة
+        $thesis = Thesis::create([
+            'title' => $validated['title'],
+            'year' => $validated['year'],
+            'pdf_path' => $pdfPath,
+            'university_id' => $validated['university_id'],
+            'specialization_id' => $validated['specialization_id'],
+            'degree_id' => $validated['degree_id'],
+            'author_id' => $author->id,
+        ]);
+
+        return response()->json([
+            'message' => 'تمت إضافة الرسالة بنجاح',
+            'thesis' => $thesis,
+            'author_name' => $author->name
+        ], 201);
+    }
 }
