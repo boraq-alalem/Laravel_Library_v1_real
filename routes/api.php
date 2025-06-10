@@ -30,5 +30,6 @@ Route::get('/degrees', [StatsController::class, 'allDegrees']);
 // 4. الجامعات والتخصصات
 // =====================
 Route::get('/universities-with-specializations', [StatsController::class, 'universitiesWithSpecializations']);
+Route::get('/universities-with-specializations-guests', [StatsController::class, 'universitiesWithSpecializationsForGuests']);
 Route::get('/universities/search', [StatsController::class, 'searchUniversities']);
-Route::post('/universities/{university}/specializations', [StatsController::class, 'addSpecializationToUniversity']);
+Route::post('/universities/{university}/add-specialization', [StatsController::class, 'addSpecializationToUniversity']);
