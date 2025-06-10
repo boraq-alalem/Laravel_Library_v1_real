@@ -12,9 +12,9 @@ class ImportThesesSeeder extends Seeder
 {
     public function run(): void
     {
-        $basePath = 'C:/Users/hammam/Desktop/omar_final/test_6/json_content';
+        $basePath = base_path('storage/app/public/pdfs/json_content');
         $rii = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($basePath));
-        $logFile = 'C:/Users/hammam/Desktop/design/Laravel/import_log.txt';
+        $logFile = base_path('storage/app/public/pdfs/import_log.txt');
         $imported = 0;
         $skipped = 0;
         file_put_contents($logFile, "\n=== Import Started at ".date('Y-m-d H:i:s')." ===\n", FILE_APPEND);

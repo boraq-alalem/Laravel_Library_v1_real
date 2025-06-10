@@ -65,8 +65,33 @@ class StatsController extends Controller
         if ($request->filled('year')) {
             $query->where('year', $request->year);
         }
-        $theses = $query->latest('id')->paginate(15);
-        return response()->json($theses);
+        $theses = $query->latest('id')->get();
+        // إعادة تنسيق النتائج بدون created_at و updated_at
+        $result = $theses->map(function($thesis) {
+            return [
+                'id' => $thesis->id,
+                'title' => $thesis->title,
+                'year' => $thesis->year,
+                'pdf_path' => $thesis->pdf_path,
+                'university' => $thesis->university ? [
+                    'id' => $thesis->university->id,
+                    'name' => $thesis->university->name,
+                ] : null,
+                'specialization' => $thesis->specialization ? [
+                    'id' => $thesis->specialization->id,
+                    'name' => $thesis->specialization->name,
+                ] : null,
+                'degree' => $thesis->degree ? [
+                    'id' => $thesis->degree->id,
+                    'name' => $thesis->degree->name,
+                ] : null,
+                'author' => $thesis->author ? [
+                    'id' => $thesis->author->id,
+                    'name' => $thesis->author->name,
+                ] : null,
+            ];
+        });
+        return response()->json($result->values());
     }
 
     public function allSpecializations()
@@ -108,17 +133,42 @@ class StatsController extends Controller
 
     public function universitiesWithSpecializations()
     {
-        $universities = University::with('specializations:id,name')->get(['id', 'name']);
-        return response()->json($universities);
+        // استعلام مباشر من جدول الوسيط فقط
+        $data = \DB::table('specialization_university')
+            ->join('universities', 'specialization_university.university_id', '=', 'universities.id')
+            ->join('specializations', 'specialization_university.specialization_id', '=', 'specializations.id')
+            ->select('universities.id as university_id', 'universities.name as university_name', 'specializations.id as specialization_id', 'specializations.name as specialization_name')
+            ->get();
+
+        // إعادة ترتيب البيانات بحيث كل جامعة تحتها تخصصاتها
+        $result = [];
+        foreach ($data as $row) {
+            if (!isset($result[$row->university_id])) {
+                $result[$row->university_id] = [
+                    'id' => $row->university_id,
+                    'name' => $row->university_name,
+                    'specializations' => [],
+                ];
+            }
+            $result[$row->university_id]['specializations'][] = [
+                'id' => $row->specialization_id,
+                'name' => $row->specialization_name,
+            ];
+        }
+        return response()->json(array_values($result));
     }
 
     public function addSpecializationToUniversity(Request $request, $universityId)
     {
-        $request->validate([
+        $validated = $request->validate([
+            'university_id' => 'required|exists:universities,id',
             'specialization_id' => 'required|exists:specializations,id',
         ]);
-        $university = University::findOrFail($universityId);
-        $university->specializations()->syncWithoutDetaching([$request->specialization_id]);
+        // إضافة التخصص للجامعة بدون تكرار
+        \DB::table('specialization_university')->updateOrInsert([
+            'university_id' => $validated['university_id'],
+            'specialization_id' => $validated['specialization_id'],
+        ], []);
         return response()->json(['message' => 'تمت إضافة التخصص للجامعة بنجاح']);
     }
 
@@ -166,5 +216,27 @@ class StatsController extends Controller
             'thesis' => $thesis,
             'author_name' => $author->name
         ], 201);
+    }
+
+    public function universitiesWithSpecializationsForGuests()
+    {
+        $data = \DB::table('specialization_university')
+            ->join('universities', 'specialization_university.university_id', '=', 'universities.id')
+            ->join('specializations', 'specialization_university.specialization_id', '=', 'specializations.id')
+            ->select('universities.id as university_id', 'universities.name as university_name', 'specializations.name as specialization_name')
+            ->get();
+
+        $result = [];
+        foreach ($data as $row) {
+            if (!isset($result[$row->university_id])) {
+                $result[$row->university_id] = [
+                    'id' => $row->university_id,
+                    'name' => $row->university_name,
+                    'specializations' => [],
+                ];
+            }
+            $result[$row->university_id]['specializations'][] = $row->specialization_name;
+        }
+        return response()->json(array_values($result));
     }
 }
