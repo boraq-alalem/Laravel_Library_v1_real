@@ -4,9 +4,10 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class Thesis extends Model
+class ArchiveThesis extends Model
 {
     use HasFactory;
+    protected $table = 'archive_theses';
     protected $fillable = [
         'id', 'title', 'year', 'pdf_path', 'university_id', 'specialization_id', 'degree_id', 'author_id'
     ];

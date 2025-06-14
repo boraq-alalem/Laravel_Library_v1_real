@@ -33,3 +33,10 @@ Route::get('/universities-with-specializations', [StatsController::class, 'unive
 Route::get('/universities-with-specializations-guests', [StatsController::class, 'universitiesWithSpecializationsForGuests']);
 Route::get('/universities/search', [StatsController::class, 'searchUniversities']);
 Route::post('/universities/{university}/add-specialization', [StatsController::class, 'addSpecializationToUniversity']);
+
+// =====================
+// 5. الأرشيف (Archived Theses)
+// =====================
+Route::get('/archived-theses', [StatsController::class, 'getArchivedTheses']);
+Route::delete('/archived-theses/{id}', [StatsController::class, 'deleteArchivedThesis']);
+Route::post('/archived-theses/{id}/restore', [StatsController::class, 'restoreThesis']);
