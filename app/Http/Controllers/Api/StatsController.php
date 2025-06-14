@@ -9,6 +9,8 @@ use App\Models\Author;
 use App\Models\University;
 use App\Models\Degree;
 use App\Models\Specialization;
+use App\Models\ArchiveThesis;
+use Illuminate\Support\Facades\Storage;
 
 class StatsController extends Controller
 {
@@ -39,7 +41,32 @@ class StatsController extends Controller
             ->latest('id')
             ->take(10)
             ->get();
-        return response()->json($theses);
+        $result = $theses->map(function($thesis) {
+            return [
+                'id' => $thesis->id,
+                'title' => $thesis->title,
+                'year' => $thesis->year,
+                // إرجاع pdf_path كما هو من قاعدة البيانات
+                'pdf_path' => $thesis->pdf_path ?: null,
+                'university' => $thesis->university ? [
+                    'id' => $thesis->university->id,
+                    'name' => $thesis->university->name,
+                ] : null,
+                'specialization' => $thesis->specialization ? [
+                    'id' => $thesis->specialization->id,
+                    'name' => $thesis->specialization->name,
+                ] : null,
+                'degree' => $thesis->degree ? [
+                    'id' => $thesis->degree->id,
+                    'name' => $thesis->degree->name,
+                ] : null,
+                'author' => $thesis->author ? [
+                    'id' => $thesis->author->id,
+                    'name' => $thesis->author->name,
+                ] : null,
+            ];
+        });
+        return response()->json($result->values());
     }
 
     public function searchTheses(Request $request)
@@ -66,13 +93,13 @@ class StatsController extends Controller
             $query->where('year', $request->year);
         }
         $theses = $query->latest('id')->get();
-        // إعادة تنسيق النتائج بدون created_at و updated_at
         $result = $theses->map(function($thesis) {
             return [
                 'id' => $thesis->id,
                 'title' => $thesis->title,
                 'year' => $thesis->year,
-                'pdf_path' => $thesis->pdf_path,
+                // إرجاع pdf_path كما هو من قاعدة البيانات
+                'pdf_path' => $thesis->pdf_path ?: null,
                 'university' => $thesis->university ? [
                     'id' => $thesis->university->id,
                     'name' => $thesis->university->name,
@@ -127,8 +154,55 @@ class StatsController extends Controller
     public function deleteThesis($id)
     {
         $thesis = Thesis::findOrFail($id);
+        // نقل جميع البيانات بما فيها id
+        $data = $thesis->toArray();
+        ArchiveThesis::create($data);
         $thesis->delete();
-        return response()->json(['message' => 'تم الحذف بنجاح']);
+        return response()->json(['message' => 'تم نقل الرسالة إلى الأرشيف وحذفها من جدول الرسائل']);
+    }
+
+    public function getArchivedTheses()
+    {
+        $theses = ArchiveThesis::with(['author', 'university', 'specialization', 'degree'])->latest('id')->get();
+        $result = $theses->map(function($thesis) {
+            return [
+                'id' => $thesis->id,
+                'title' => $thesis->title,
+                'year' => $thesis->year,
+                'pdf_path' => $thesis->pdf_path ?: null,
+                'university' => $thesis->university ? [
+                    'id' => $thesis->university->id,
+                    'name' => $thesis->university->name,
+                ] : null,
+                'specialization' => $thesis->specialization ? [
+                    'id' => $thesis->specialization->id,
+                    'name' => $thesis->specialization->name,
+                ] : null,
+                'degree' => $thesis->degree ? [
+                    'id' => $thesis->degree->id,
+                    'name' => $thesis->degree->name,
+                ] : null,
+                'author' => $thesis->author ? [
+                    'id' => $thesis->author->id,
+                    'name' => $thesis->author->name,
+                ] : null,
+            ];
+        });
+        return response()->json($result->values());
+    }
+
+    public function deleteArchivedThesis($id)
+    {
+        $thesis = ArchiveThesis::findOrFail($id);
+        // حذف مجلد الشخص من التخزين إذا كان موجوداً
+        if ($thesis->pdf_path) {
+            $pdfPath = $thesis->pdf_path;
+            $dir = dirname($pdfPath);
+            $relativeDir = ltrim(str_replace('/storage/', '', $dir), '/');
+            Storage::disk('public')->deleteDirectory($relativeDir);
+        }
+        $thesis->delete();
+        return response()->json(['message' => 'تم حذف الرسالة والمجلد نهائياً من الأرشيف']);
     }
 
     public function universitiesWithSpecializations()
@@ -197,19 +271,55 @@ class StatsController extends Controller
         // إنشاء أو جلب الباحث
         $author = Author::firstOrCreate(['name' => $validated['author_name']]);
 
-        // رفع ملف PDF
-        $pdfPath = $request->file('pdf')->store('theses', 'public');
+        // جلب أسماء الدرجة والتخصص والجامعة
+        $degree = Degree::find($validated['degree_id']);
+        $specialization = Specialization::find($validated['specialization_id']);
+        $university = University::find($validated['university_id']);
 
-        // إنشاء الرسالة
+        // تجهيز المسار المطلوب
+        $basePath = 'pdfs/json_content';
+        $degreeName = $degree ? $degree->name : 'بدون_درجة';
+        $specializationName = $specialization ? $specialization->name : 'بدون_تخصص';
+        $authorName = $author->name;
+        // transliterate/replace spaces for folder names
+        $degreeFolder = preg_replace('/\s+/u', '_', $degreeName);
+        $specializationFolder = preg_replace('/\s+/u', '_', $specializationName);
+        $authorFolder = preg_replace('/\s+/u', '_', $authorName);
+        $targetDir = "$basePath/$degreeFolder/$specializationFolder/$authorFolder";
+
+        // حفظ ملف PDF في المسار الجديد
+        $pdfFile = $request->file('pdf');
+        $pdfName = $pdfFile->getClientOriginalName();
+        $relativePath = "$targetDir/$pdfName";
+        $pdfPath = $pdfFile->storeAs($targetDir, $pdfName, 'public');
+
+        // حفظ المسار في قاعدة البيانات مع /storage/ في البداية
+        $dbPdfPath = '/storage/' . $relativePath;
+
+        // إنشاء الرسالة في قاعدة البيانات
         $thesis = Thesis::create([
             'title' => $validated['title'],
             'year' => $validated['year'],
-            'pdf_path' => $pdfPath,
+            'pdf_path' => $dbPdfPath,
             'university_id' => $validated['university_id'],
             'specialization_id' => $validated['specialization_id'],
             'degree_id' => $validated['degree_id'],
             'author_id' => $author->id,
         ]);
+
+        // تجهيز بيانات ملف الجيسون
+        $jsonData = [
+            'id' => (string)$thesis->id,
+            'اسم الشخص' => $author->name,
+            'التخصص' => $specializationName,
+            'عنوان الرسالة' => $validated['title'],
+            'اسم الجامعة او الكلية' => $university ? $university->name : '',
+            'التاريخ' => $validated['year'],
+            'الدرجة العلمية' => $degreeName,
+            'source' => 'all_csv.json',
+        ];
+        $jsonFileName = $authorFolder . '.json';
+        \Storage::disk('public')->put("$targetDir/$jsonFileName", json_encode($jsonData, JSON_UNESCAPED_UNICODE|JSON_PRETTY_PRINT));
 
         return response()->json([
             'message' => 'تمت إضافة الرسالة بنجاح',
@@ -238,5 +348,15 @@ class StatsController extends Controller
             $result[$row->university_id]['specializations'][] = $row->specialization_name;
         }
         return response()->json(array_values($result));
+    }
+
+    public function restoreThesis($id)
+    {
+        $archived = ArchiveThesis::findOrFail($id);
+        // نقل جميع البيانات بما فيها id
+        $data = $archived->toArray();
+        Thesis::create($data);
+        $archived->delete();
+        return response()->json(['message' => 'تمت استعادة الرسالة إلى جدول الرسائل بنجاح']);
     }
 }
