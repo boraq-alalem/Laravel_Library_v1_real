@@ -8,7 +8,7 @@ return new class extends Migration {
     {
         Schema::create('thesis_titles_simple', function (Blueprint $table) {
             $table->id();
-            $table->text('title')->unique();
+            $table->string('title', 512)->unique();
             $table->string('person_name');
             $table->string('university');
             $table->timestamps();

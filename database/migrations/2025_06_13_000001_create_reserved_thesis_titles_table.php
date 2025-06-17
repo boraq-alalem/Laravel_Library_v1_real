@@ -8,13 +8,12 @@ return new class extends Migration {
     {
         Schema::create('reserved_thesis_titles', function (Blueprint $table) {
             $table->id();
-            $table->string('person_name');
-            $table->string('language');
-            $table->string('degree');
-            $table->string('specialization');
-            $table->string('title', 1024); // إزالة unique لتفادي مشكلة max key length
-            $table->string('university');
-            $table->string('date');
+            $table->string('title', 1024);
+            $table->string('person_name', 255);
+            $table->string('university', 255);
+            $table->string('specialization', 255);
+            $table->string('degree', 255);
+            $table->string('date', 255);
             $table->timestamps();
         });
     }
