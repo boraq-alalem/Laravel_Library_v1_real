@@ -4,12 +4,68 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\StatsController;
 
+// =====================
+// 1. الإحصائيات العامة
+// =====================
 Route::get('/stats', [StatsController::class, 'index']);
+
+// =====================
+// 2. الرسائل (Theses)
+// =====================
 Route::get('/theses/latest', [StatsController::class, 'latestTheses']);
+Route::get('/theses/search', [StatsController::class, 'searchTheses']);
+Route::get('/theses/search-guests', [StatsController::class, 'searchThesesForGuests']);
+Route::post('/theses', [StatsController::class, 'storeThesis']);
+Route::put('/theses/{id}', [StatsController::class, 'updateThesis']);
+Route::delete('/theses/{id}', [StatsController::class, 'deleteThesis']);
+Route::get('/theses/years', [StatsController::class, 'allYears']);
+
+// =====================
+// 3. الفلاتر (Dropdowns)
+// =====================
 Route::get('/specializations', [StatsController::class, 'allSpecializations']);
 Route::get('/universities', [StatsController::class, 'allUniversities']);
 Route::get('/degrees', [StatsController::class, 'allDegrees']);
-Route::get('/theses/years', [StatsController::class, 'allYears']);
-Route::get('/theses/search', [StatsController::class, 'searchTheses']);
-Route::put('/theses/{id}', [StatsController::class, 'updateThesis']);
-Route::delete('/theses/{id}', [StatsController::class, 'deleteThesis']);
+
+// =====================
+// 4. الجامعات والتخصصات
+// =====================
+Route::get('/universities-with-specializations', [StatsController::class, 'universitiesWithSpecializations']);
+Route::get('/universities-with-specializations-guests', [StatsController::class, 'universitiesWithSpecializationsForGuests']);
+Route::get('/universities/search', [StatsController::class, 'searchUniversities']);
+Route::post('/universities/{university}/add-specialization', [StatsController::class, 'addSpecializationToUniversity']);
+
+// =====================
+// 5. الأرشيف (Archived Theses)
+// =====================
+Route::get('/archived-theses', [StatsController::class, 'getArchivedTheses']);
+Route::delete('/archived-theses/{id}', [StatsController::class, 'deleteArchivedThesis']);
+Route::post('/archived-theses/{id}/restore', [StatsController::class, 'restoreThesis']);
+
+// =====================
+// 6. عناوين الرسائل البسيطة (ThesisTitlesSimple)
+// =====================
+Route::get('/thesis-titles-simple', [StatsController::class, 'getThesisTitlesSimple']);
+Route::get('/thesis-titles-simple/{id}', [StatsController::class, 'showThesisTitleSimple']);
+Route::post('/thesis-titles-simple', [StatsController::class, 'storeThesisTitleSimple']);
+Route::post('/thesis-titles-simple/add', [StatsController::class, 'storeThesisTitleSimpleFromQuery']);
+Route::put('/thesis-titles-simple/{id}', [StatsController::class, 'updateThesisTitleSimple']);
+Route::delete('/thesis-titles-simple/{id}', [StatsController::class, 'deleteThesisTitleSimple']);
+Route::get('/thesis-titles-simple-latest', [StatsController::class, 'latestThesisTitlesSimple']);
+Route::get('/thesis-titles-simple-search', [StatsController::class, 'searchThesisTitlesSimple']);
+
+// =====================
+// 7. عناوين الرسائل المحجوزة (ReservedThesisTitles)
+// =====================
+Route::get('/reserved-thesis-titles-latest', [StatsController::class, 'latestReservedThesisTitles']);
+Route::get('/reserved-thesis-titles-latest-guests', [StatsController::class, 'latestReservedThesisTitlesForGuests']);
+Route::post('/reserved-thesis-titles', [StatsController::class, 'storeReservedThesisTitle']);
+Route::put('/reserved-thesis-titles/{id}', [StatsController::class, 'updateReservedThesisTitle']);
+Route::delete('/reserved-thesis-titles/{id}', [StatsController::class, 'deleteReservedThesisTitle']);
+Route::get('/reserved-thesis-titles-search', [StatsController::class, 'searchReservedThesisTitles']);
+Route::get('/reserved-thesis-titles-search-guests', [StatsController::class, 'searchReservedThesisTitlesForGuests']);
+
+// =====================
+// 8. ملفات PDF المشفرة
+// =====================
+Route::get('/pdf/{token}', [StatsController::class, 'servePdf']);
