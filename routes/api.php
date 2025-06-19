@@ -64,3 +64,8 @@ Route::put('/reserved-thesis-titles/{id}', [StatsController::class, 'updateReser
 Route::delete('/reserved-thesis-titles/{id}', [StatsController::class, 'deleteReservedThesisTitle']);
 Route::get('/reserved-thesis-titles-search', [StatsController::class, 'searchReservedThesisTitles']);
 Route::get('/reserved-thesis-titles-search-guests', [StatsController::class, 'searchReservedThesisTitlesForGuests']);
+
+// =====================
+// 8. ملفات PDF المشفرة
+// =====================
+Route::get('/pdf/{token}', [StatsController::class, 'servePdf']);

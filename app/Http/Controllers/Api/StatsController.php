@@ -12,7 +12,9 @@ use App\Models\Specialization;
 use App\Models\ArchiveThesis;
 use App\Models\ThesisTitlesSimple;
 use App\Models\ReservedThesisTitle;
+use Illuminate\Support\Facades\Response;
 use Illuminate\Support\Facades\Storage;
+use App\Helpers\PdfPathHelper;
 
 class StatsController extends Controller
 {
@@ -48,8 +50,8 @@ class StatsController extends Controller
                 'id' => $thesis->id,
                 'title' => $thesis->title,
                 'year' => $thesis->year,
-                // إرجاع pdf_path كما هو من قاعدة البيانات
-                'pdf_path' => $thesis->pdf_path ?: null,
+                // تشفير مسار PDF فقط بدون أي دومين أو بادئة
+                'pdf_path' => $thesis->pdf_path ? '/api/pdf/' . PdfPathHelper::encryptPath($thesis->pdf_path) : null,
                 'university' => $thesis->university ? [
                     'id' => $thesis->university->id,
                     'name' => $thesis->university->name,
@@ -100,8 +102,8 @@ class StatsController extends Controller
                 'id' => $thesis->id,
                 'title' => $thesis->title,
                 'year' => $thesis->year,
-                // إرجاع pdf_path كما هو من قاعدة البيانات
-                'pdf_path' => $thesis->pdf_path ?: null,
+                // تشفير مسار PDF فقط بدون أي دومين أو بادئة
+                'pdf_path' => $thesis->pdf_path ? '/api/pdf/' . PdfPathHelper::encryptPath($thesis->pdf_path) : null,
                 'university' => $thesis->university ? [
                     'id' => $thesis->university->id,
                     'name' => $thesis->university->name,
@@ -147,36 +149,89 @@ class StatsController extends Controller
     public function updateThesis(Request $request, $id)
     {
         $thesis = Thesis::findOrFail($id);
+        $oldDegree = $thesis->degree ? $thesis->degree->name : 'بدون_درجة';
+        $oldSpecialization = $thesis->specialization ? $thesis->specialization->name : 'بدون_تخصص';
+        $oldAuthor = $thesis->author ? $thesis->author->name : 'بدون_اسم';
+        $oldDegreeFolder = preg_replace('/\s+/u', '_', $oldDegree);
+        $oldSpecializationFolder = preg_replace('/\s+/u', '_', $oldSpecialization);
+        $oldAuthorFolder = preg_replace('/\s+/u', '_', $oldAuthor);
+        $basePath = 'pdfs/json_content';
+        $oldDir = "$basePath/$oldDegreeFolder/$oldSpecializationFolder/$oldAuthorFolder";
+        $oldPdfPath = $thesis->pdf_path;
+        $oldJsonFile = $oldAuthorFolder . '.json';
+
+        // تحديث اسم الشخص إذا تم تعديله
+        if ($request->filled('author_name')) {
+            $author = Author::firstOrCreate(['name' => $request->author_name]);
+            $request->merge(['author_id' => $author->id]);
+        }
+
+        // تحديث الحقول بدون pdf_path إذا لم يتم رفع ملف جديد
+        $updateData = $request->only([
+            'title', 'year', 'university_id', 'specialization_id', 'degree_id', 'author_id'
+        ]);
         // إذا تم رفع ملف PDF جديد
         if ($request->hasFile('pdf')) {
             // حذف ملف PDF القديم إذا كان موجوداً
-            if ($thesis->pdf_path) {
-                $oldPath = str_replace('/storage/', '', $thesis->pdf_path);
+            if ($oldPdfPath) {
+                $oldPath = str_replace('/storage/', '', $oldPdfPath);
                 \Storage::disk('public')->delete($oldPath);
             }
-            // حفظ الملف الجديد
             $pdfFile = $request->file('pdf');
             $pdfName = $pdfFile->getClientOriginalName();
-            // إعادة استخدام نفس منطق المسار كما في storeThesis
-            $author = $thesis->author;
-            $degree = $thesis->degree;
-            $specialization = $thesis->specialization;
-            $basePath = 'pdfs/json_content';
-            $degreeFolder = preg_replace('/\s+/u', '_', $degree ? $degree->name : 'بدون_درجة');
-            $specializationFolder = preg_replace('/\s+/u', '_', $specialization ? $specialization->name : 'بدون_تخصص');
-            $authorFolder = preg_replace('/\s+/u', '_', $author ? $author->name : 'بدون_اسم');
-            $targetDir = "$basePath/$degreeFolder/$specializationFolder/$authorFolder";
-            $relativePath = "$targetDir/$pdfName";
-            $pdfPath = $pdfFile->storeAs($targetDir, $pdfName, 'public');
-            $requestData = $request->only([
-                'title', 'year', 'university_id', 'specialization_id', 'degree_id', 'author_id'
-            ]);
-            $requestData['pdf_path'] = '/storage/' . $relativePath;
-            $thesis->update($requestData);
-        } else {
-            $thesis->update($request->only([
-                'title', 'year', 'pdf_path', 'university_id', 'specialization_id', 'degree_id', 'author_id'
-            ]));
+            // جلب القيم الجديدة بعد التحديث
+            $newDegree = $request->degree_id ? (\App\Models\Degree::find($request->degree_id)->name ?? 'بدون_درجة') : $oldDegree;
+            $newSpecialization = $request->specialization_id ? (\App\Models\Specialization::find($request->specialization_id)->name ?? 'بدون_تخصص') : $oldSpecialization;
+            $newAuthor = $request->author_id ? (\App\Models\Author::find($request->author_id)->name ?? 'بدون_اسم') : $oldAuthor;
+            $newDegreeFolder = preg_replace('/\s+/u', '_', $newDegree);
+            $newSpecializationFolder = preg_replace('/\s+/u', '_', $newSpecialization);
+            $newAuthorFolder = preg_replace('/\s+/u', '_', $newAuthor);
+            $newDir = "$basePath/$newDegreeFolder/$newSpecializationFolder/$newAuthorFolder";
+            $relativePath = "$newDir/$pdfName";
+            $pdfPath = $pdfFile->storeAs($newDir, $pdfName, 'public');
+            $updateData['pdf_path'] = '/storage/' . $relativePath;
+        }
+        $thesis->update($updateData);
+        $thesis->refresh();
+
+        // جلب القيم الجديدة بعد التحديث
+        $newDegree = $thesis->degree ? $thesis->degree->name : 'بدون_درجة';
+        $newSpecialization = $thesis->specialization ? $thesis->specialization->name : 'بدون_تخصص';
+        $newAuthor = $thesis->author ? $thesis->author->name : 'بدون_اسم';
+        $newDegreeFolder = preg_replace('/\s+/u', '_', $newDegree);
+        $newSpecializationFolder = preg_replace('/\s+/u', '_', $newSpecialization);
+        $newAuthorFolder = preg_replace('/\s+/u', '_', $newAuthor);
+        $newDir = "$basePath/$newDegreeFolder/$newSpecializationFolder/$newAuthorFolder";
+
+        // إذا تغير المسار
+        if ($oldDir !== $newDir) {
+            // نقل ملف PDF القديم إذا لم يتم رفع ملف جديد
+            if (!$request->hasFile('pdf') && $oldPdfPath && \Storage::disk('public')->exists(str_replace('/storage/', '', $oldPdfPath))) {
+                $pdfName = basename($oldPdfPath);
+                $newPdfPath = "$newDir/$pdfName";
+                \Storage::disk('public')->makeDirectory($newDir);
+                \Storage::disk('public')->move(str_replace('/storage/', '', $oldPdfPath), $newPdfPath);
+                $thesis->update(['pdf_path' => '/storage/' . $newPdfPath]);
+            }
+            // تحديث أو إنشاء ملف JSON جديد بالقيم الجديدة
+            $newJsonFile = $newAuthorFolder . '.json';
+            $jsonData = [
+                'id' => (string)$thesis->id,
+                'اسم الشخص' => $newAuthor,
+                'التخصص' => $newSpecialization,
+                'عنوان الرسالة' => $thesis->title,
+                'اسم الجامعة او الكلية' => $thesis->university ? $thesis->university->name : '',
+                'التاريخ' => $thesis->year,
+                'الدرجة العلمية' => $newDegree,
+                'source' => 'all_csv.json',
+            ];
+            \Storage::disk('public')->put("$newDir/$newJsonFile", json_encode($jsonData, JSON_UNESCAPED_UNICODE|JSON_PRETTY_PRINT));
+            // حذف ملف JSON القديم إذا كان موجوداً
+            if (\Storage::disk('public')->exists("$oldDir/$oldJsonFile")) {
+                \Storage::disk('public')->delete("$oldDir/$oldJsonFile");
+            }
+            // حذف المجلد القديم دائماً
+            \Storage::disk('public')->deleteDirectory($oldDir);
         }
         return response()->json(['message' => 'تم التعديل بنجاح', 'thesis' => $thesis->fresh()]);
     }
@@ -199,7 +254,8 @@ class StatsController extends Controller
                 'id' => $thesis->id,
                 'title' => $thesis->title,
                 'year' => $thesis->year,
-                'pdf_path' => $thesis->pdf_path ?: null,
+                // تشفير مسار PDF للأرشيف
+                'pdf_path' => $thesis->pdf_path ? request()->getSchemeAndHttpHost() . '/api/pdf/' . PdfPathHelper::encryptPath($thesis->pdf_path) : null,
                 'university' => $thesis->university ? [
                     'id' => $thesis->university->id,
                     'name' => $thesis->university->name,
@@ -588,7 +644,8 @@ class StatsController extends Controller
             return [
                 'title' => $thesis->title,
                 'year' => $thesis->year,
-                'pdf_path' => $thesis->pdf_path ?: null,
+                // تشفير مسار PDF للزوار أيضاً
+                'pdf_path' => $thesis->pdf_path ? request()->getSchemeAndHttpHost() . '/api/pdf/' . \App\Helpers\PdfPathHelper::encryptPath($thesis->pdf_path) : null,
                 'university' => $thesis->university ? $thesis->university->name : null,
                 'specialization' => $thesis->specialization ? $thesis->specialization->name : null,
                 'degree' => $thesis->degree ? $thesis->degree->name : null,
@@ -596,5 +653,39 @@ class StatsController extends Controller
             ];
         });
         return response()->json($result->values());
+    }
+
+    // Endpoint: /api/pdf/{token}
+    public function servePdf($token)
+    {
+        $realPath = PdfPathHelper::decryptPath($token);
+        \Log::info('[PDF DEBUG] realPath after decrypt: ' . print_r($realPath, true));
+        if (!$realPath) {
+            return response()->json(['message' => 'PDF not found (decrypt error)'], 404);
+        }
+        // معالجة المسار: حذف أي جزء قبل public/ أو storage/app/public/
+        $relative = null;
+        if (strpos($realPath, 'storage/app/public/') !== false) {
+            $relative = substr($realPath, strpos($realPath, 'storage/app/public/') + strlen('storage/app/public/'));
+        } elseif (strpos($realPath, '/storage/') !== false) {
+            $relative = ltrim(strstr($realPath, '/storage/'), '/storage/');
+        } elseif (strpos($realPath, 'pdfs/') !== false) {
+            $relative = substr($realPath, strpos($realPath, 'pdfs/'));
+        } elseif (strpos($realPath, 'json_content/') !== false) {
+            $relative = substr($realPath, strpos($realPath, 'json_content/'));
+        } else {
+            $relative = ltrim($realPath, '/');
+        }
+        \Log::info('[PDF DEBUG] relative path: ' . $relative);
+        $fullPath = storage_path('app/public/' . $relative);
+        if (!file_exists($fullPath)) {
+            return response()->json(['message' => 'PDF not found (not exists): ' . $relative], 404);
+        }
+        // إرسال الملف مباشرة مع دعم الكاش
+        return response()->file($fullPath, [
+            'Content-Type' => 'application/pdf',
+            'Cache-Control' => 'public, max-age=86400', // كاش ليوم كامل
+            'Content-Disposition' => 'inline; filename="' . basename($relative) . '"',
+        ]);
     }
 }
