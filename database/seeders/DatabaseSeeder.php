@@ -6,6 +6,10 @@ use App\Models\User;
 use Database\Seeders\ImportThesesSeeder;
 use Database\Seeders\ImportReservedThesisTitlesSeeder;
 use Database\Seeders\ImportThesisTitlesSimpleSeeder;
+use Database\Seeders\RoleSeeder;
+use Database\Seeders\PermissionSeeder;
+use Database\Seeders\RolePermissionSeeder;
+use Database\Seeders\UserSeeder;
 // use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
@@ -17,6 +21,10 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         $this->call([
+            RoleSeeder::class,
+            PermissionSeeder::class,
+            RolePermissionSeeder::class,
+            UserSeeder::class,
             ImportThesesSeeder::class,
             ImportReservedThesisTitlesSeeder::class,
             ImportThesisTitlesSimpleSeeder::class,
