@@ -69,3 +69,27 @@ Route::get('/reserved-thesis-titles-search-guests', [StatsController::class, 'se
 // 8. ملفات PDF المشفرة
 // =====================
 Route::get('/pdf/{token}', [StatsController::class, 'servePdf']);
+
+
+// =====================
+// 9. الأدوار والصلاحيات (Roles with Permissions)
+Route::get('/roles/{role}/permissions', [App\Http\Controllers\Api\RoleController::class, 'showPermissions']);
+// =====================
+Route::get('/roles-with-permissions', [App\Http\Controllers\Api\RoleController::class, 'indexWithPermissions']);
+
+// =====================
+// 10. أدوار المستخدمين (User Roles)
+// =====================
+Route::get('/users/{user}/roles', [App\Http\Controllers\Api\UserRoleController::class, 'index']);
+Route::post('/users/{user}/roles', [App\Http\Controllers\Api\UserRoleController::class, 'assignRole']);
+Route::delete('/users/{user}/roles/{role}', [App\Http\Controllers\Api\UserRoleController::class, 'removeRole']);
+
+// =====================
+// 11. المصادقة (Authentication)
+// =====================
+Route::post('/register', [App\Http\Controllers\Api\UserController::class, 'register']);
+
+// =====================
+// 12. تعديل دور المستخدم (Update User Role)
+// =====================
+Route::middleware(['auth:sanctum', 'role:super_admin'])->put('/users/{user}/role', [App\Http\Controllers\Api\UserController::class, 'updateUserRole']);
