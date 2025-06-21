@@ -11,6 +11,11 @@ class Thesis extends Model
         'id', 'title', 'year', 'pdf_path', 'university_id', 'specialization_id', 'degree_id', 'author_id'
     ];
 
+    protected $hidden = [
+        'created_at',
+        'updated_at',
+    ];
+
     public function university()
     {
         return $this->belongsTo(University::class);

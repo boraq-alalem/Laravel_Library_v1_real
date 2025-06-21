@@ -1,0 +1,435 @@
+**11. المصادقة (Authentication)**
+*   **POST /login**
+    ```json
+    {
+        "message": "Login successful",
+        "access_token": "your_api_token_here",
+        "token_type": "bearer",
+        "user": {
+            "id": 1,
+            "name": "User Name",
+            "email": "user@example.com",
+            "roles": [
+                {
+                    "id": 1,
+                    "name": "role_name",
+                    "pivot": {
+                        "user_id": 1,
+                        "role_id": 1
+                    },
+                    "permissions": [
+                        {
+                            "id": 1,
+                            "name": "permission_name_1"
+                        }
+                        {
+                            "id": 2,
+                            "name": "permission_name_2"
+                        }
+                    ]
+                }
+            ],
+            "permissions": [
+                "permission_name_1",
+                "permission_name_2"
+            ]
+        }
+    }
+    ```
+    *   **Invalid Credentials / Validation Errors**
+        ```json
+        {
+            "message": "Invalid credentials"
+        }
+        ```
+        OR
+        ```json
+        {
+            "errors": {
+                "email": [
+                    "The email field is required."
+                ]
+            }
+        }
+        ```
+
+**9. الأدوار والصلاحيات (Roles with Permissions)**
+*   **GET /roles/{role}/permissions**
+    ```json
+    [
+        {
+            "id": 1,
+            "name": "permission_name_1"
+        }
+        {
+            "id": 2,
+            "name": "permission_name_2"
+        }
+    ]
+    ```
+*   **GET /roles-with-permissions**
+    ```json
+    [
+        {
+            "id": 1,
+            "name": "super_admin",
+            "permissions": [
+                {
+                    "id": 1,
+                    "name": "إضافة مستخدمين"
+                },
+                {
+                    "id": 2,
+                    "name": "العناوين محجوزة"
+                },
+                {
+                    "id": 3,
+                    "name": "الرسائل"
+                },
+                {
+                    "id": 4,
+                    "name": "إضافة الجامعات والتعديل عليها"
+                },
+                {
+                    "id": 5,
+                    "name": "إضافة التخصصات والتعديل عليها"
+                }
+            ]
+        },
+        {
+            "id": 2,
+            "name": "admin",
+            "permissions": [
+                {
+                    "id": 2,
+                    "name": "العناوين محجوزة"
+                },
+                {
+                    "id": 3,
+                    "name": "الرسائل"
+                },
+                {
+                    "id": 4,
+                    "name": "إضافة الجامعات والتعديل عليها"
+                },
+                {
+                    "id": 5,
+                    "name": "إضافة التخصصات والتعديل عليها"
+                }
+            ]
+        },
+        {
+            "id": 3,
+            "name": "writer-titles",
+            "permissions": [
+                {
+                    "id": 2,
+                    "name": "العناوين محجوزة"
+                }
+            ]
+        },
+        {
+            "id": 4,
+            "name": "writer-theses",
+            "permissions": [
+                {
+                    "id": 3,
+                    "name": "الرسائل"
+                }
+            ]
+        },
+        {
+            "id": 5,
+            "name": "thesis-and-titles-reader",
+            "permissions": [
+                {
+                    "id": 2,
+                    "name": "العناوين محجوزة"
+                },
+                {
+                    "id": 3,
+                    "name": "الرسائل"
+                }
+            ]
+        }
+    ]
+    ```
+
+**12. تعديل دور المستخدم (Update User Role)**
+*   **POST /users (Create User)**
+    ```json
+    {
+        "message": "User created successfully",
+        "user": {
+            "name": "user",
+            "email": "user@gmail.com",
+            "id": 6,
+            "roles": [
+                {
+                    "id": 4,
+                    "name": "writer-theses",
+                    "pivot": {
+                        "user_id": 6,
+                        "role_id": 4
+                    }
+                }
+            ]
+        }
+    }
+    ```
+    *   **Validation Errors**
+        ```json
+        {
+            "errors": {
+                "email": [
+                    "The email has already been taken."
+                ]
+            }
+        }
+        ```
+*   **PUT /users/{user} (Update User)**
+    ```json
+    {
+        "message": "User updated successfully",
+        "user": {
+            "id": 2,
+            "name": "Updated User Name",
+            "email": "updated_email@example.com",
+            "email_verified_at": null,
+            "roles": [
+                {
+                    "id": 1,
+                    "name": "new_role_name",
+                    "pivot": {
+                        "user_id": 2,
+                        "role_id": 1
+                    }
+                }
+            ]
+        }
+    }
+    ```
+    *   **Validation Errors**
+        ```json
+        {
+            "errors": {
+                "email": [
+                    "The email has already been taken."
+                ]
+            }
+        }
+        ```
+*   **DELETE /users/{user} (Delete User)**
+    ```json
+    {
+        "message": "User deleted successfully"
+    }
+    ```
+    *   **Cannot delete last super admin**
+        ```json
+        {
+            "message": "Cannot delete the last super admin user."
+        }
+        ```
+
+**14. عرض المستخدمين باستثناء super_admin (Users without Super Admin)**
+*   **GET /users-without-super-admin**
+    ```json
+    [
+        {
+            "id": 3,
+            "name": "admin_user_update",
+            "email": "admin_user@gmail.com",
+            "email_verified_at": null,
+            "roles": [
+                {
+                    "id": 4,
+                    "name": "writer-theses"
+                }
+            ],
+            "permissions": [
+                {
+                    "id": 3,
+                    "name": "الرسائل"
+                }
+            ]
+        }
+    ]
+    ```
+
+**13. سجل نشاط المستخدم (User Activity Log)**
+*   **GET /super-admin/added-users**
+    ```json
+    [
+        {
+            "super_admin_id": 1,
+            "super_admin_name": "Super Admin Name",
+            "super_admin_email": "superadmin@example.com",
+            "added_users": [
+                {
+                    "user_id": 2,
+                    "user_name": "Added User 1",
+                    "user_email": "added1@example.com",
+                    "current_role": "user_role_name",
+                    "added_at": "2023-01-01 12:00:00"
+                },
+                {
+                    "user_id": 3,
+                    "user_name": "Added User 2",
+                    "user_email": "added2@example.com",
+                    "current_role": "another_role_name",
+                    "added_at": "2023-01-02 13:00:00"
+                }
+            ]
+        }
+    ]
+    ```
+*   **GET /super-admin/users/{user}/role-history**
+    ```json
+    {
+        "user_id": 2,
+        "user_name": "User Name",
+        "history": [
+            {
+                "action": "added",
+                "date": "2023-01-01 12:00:00",
+                "performed_by_super_admin_id": 1,
+                "performed_by_super_admin_name": "Super Admin Name",
+                "role": "initial_role_name"
+            },
+            {
+                "action": "role_changed",
+                "date": "2023-01-05 10:30:00",
+                "performed_by_super_admin_id": 1,
+                "performed_by_super_admin_name": "Super Admin Name",
+                "old_role": "initial_role_name",
+                "new_role": "new_role_name"
+            }
+        ]
+    }
+
+**15. سجل نشاط Super Admin (Super Admin Activity Log)**
+*   **GET /super-admin/{superAdmin}/activity-log**
+    ```json
+    {
+        "super_admin_id": 1,
+        "super_admin_name": "Super Admin Name",
+        "super_admin_email": "superadmin@example.com",
+        "activity_log": [
+            {
+                "log_id": 1,
+                "action": "added",
+                "date": "2023-01-01 12:00:00",
+                "affected_user_id": 2,
+                "affected_user_name": "Affected User 1",
+                "affected_user_email": "affected1@example.com",
+                "new_role": "user_role_name"
+            },
+            {
+                "log_id": 2,
+                "action": "role_changed",
+                "date": "2023-01-05 10:30:00",
+                "affected_user_id": 2,
+                "affected_user_name": "Affected User 1",
+                "affected_user_email": "affected1@example.com",
+                "old_role": "old_role_name",
+                "new_role": "new_role_name"
+            },
+            {
+                "log_id": 3,
+                "action": "deleted",
+                "date": "2023-01-10 09:00:00",
+                "affected_user_id": 3,
+                "affected_user_name": "Affected User 2",
+                "affected_user_email": "affected2@example.com",
+                "old_role": "deleted_user_role_name"
+            },
+            {
+                "log_id": 4,
+                "action": "updated_details",
+                "date": "2023-01-15 14:00:00",
+                "affected_user_id": 4,
+                "affected_user_name": "Affected User 3",
+                "affected_user_email": "affected3@example.com",
+                "changes": {
+                    "name": {
+                        "old": "Old Name",
+                        "new": "New Name"
+                    },
+                    "email": {
+                        "old": "old@example.com",
+                        "new": "new@example.com"
+                    },
+                    "password": {
+                        "old": "hashed",
+                        "new": "hashed"
+                    }
+                }
+            }
+        ]
+    }
+    ```
+*   **GET /super-admin/{superAdmin}/activity-log (Updated Response Structure)**
+    ```json
+    {
+        "super_admin_id": 1,
+        "super_admin_name": "Super Admin Name",
+        "super_admin_email": "superadmin@example.com",
+        "activity_log": [
+            {
+                "log_id": 1,
+                "action": "added",
+                "date": "YYYY-MM-DD HH:MM:SS",
+                "affected_user_id": 2,
+                "affected_user_name": "Affected User Name",
+                "affected_user_email": "affected@example.com",
+                "affected_user_previous_value": null,
+                "new_role": "user_role_name"
+            },
+            {
+                "log_id": 2,
+                "action": "role_changed",
+                "date": "YYYY-MM-DD HH:MM:SS",
+                "affected_user_id": 2,
+                "affected_user_name": "Affected User Name",
+                "affected_user_email": "affected@example.com",
+                "affected_user_previous_value": null,
+                "old_role": "old_role_name",
+                "new_role": "new_role_name"
+            },
+            {
+                "log_id": 3,
+                "action": "deleted",
+                "date": "YYYY-MM-DD HH:MM:SS",
+                "affected_user_id": 3,
+                "affected_user_name": "Affected User Name",
+                "affected_user_email": "affected@example.com",
+                "affected_user_previous_value": null,
+                "old_role": "deleted_user_role_name"
+            },
+            {
+                "log_id": 4,
+                "action": "updated_details",
+                "date": "YYYY-MM-DD HH:MM:SS",
+                "affected_user_id": 4,
+                "affected_user_name": "Affected User Name",
+                "affected_user_email": "affected@example.com",
+                "affected_user_previous_value": "Old Value (Name/Email/Hashed Password)",
+                "changes": {
+                    "name": {
+                        "old": "Old Name",
+                        "new": "New Name"
+                    },
+                    "email": {
+                        "old": "old@example.com",
+                        "new": "new@example.com"
+                    },
+                    "password": {
+                        "old": "hashed",
+                        "new": "hashed"
+                    }
+                }
+            }
+        ]
+    }
+    ```

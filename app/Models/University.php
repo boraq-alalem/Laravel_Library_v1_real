@@ -9,6 +9,11 @@ class University extends Model
     use HasFactory;
     protected $fillable = ['name'];
 
+    protected $hidden = [
+        'created_at',
+        'updated_at',
+    ];
+
     public function specializations()
     {
         return $this->belongsToMany(Specialization::class);

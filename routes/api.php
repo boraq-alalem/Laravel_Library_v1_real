@@ -87,9 +87,37 @@ Route::delete('/users/{user}/roles/{role}', [App\Http\Controllers\Api\UserRoleCo
 // =====================
 // 11. المصادقة (Authentication)
 // =====================
-Route::post('/register', [App\Http\Controllers\Api\UserController::class, 'register']);
+// Route::post('/register', [App\Http\Controllers\Api\UserController::class, 'register']); // Disabled as per request
+Route::post('/login', [App\Http\Controllers\Api\UserController::class, 'login']);
 
 // =====================
 // 12. تعديل دور المستخدم (Update User Role)
 // =====================
-Route::middleware(['auth:sanctum', 'role:super_admin'])->put('/users/{user}/role', [App\Http\Controllers\Api\UserController::class, 'updateUserRole']);
+Route::middleware(['auth:sanctum', 'role:super_admin'])->group(function () {
+    // User Management (accessible only by super_admin)
+    Route::post('/users', [App\Http\Controllers\Api\UserController::class, 'store']); // Create User
+    Route::put('/users/{user}', [App\Http\Controllers\Api\UserController::class, 'update']); // Update User
+    Route::delete('/users/{user}', [App\Http\Controllers\Api\UserController::class, 'destroy']); // Delete User
+});
+
+// =====================
+// 15. سجل نشاط Super Admin (Super Admin Activity Log)
+// =====================
+Route::middleware(['auth:sanctum', 'role:super_admin'])->group(function () {
+    Route::get('/super-admin/{superAdmin}/activity-log', [App\Http\Controllers\Api\UserActivityLogController::class, 'getSuperAdminActivityLog']);
+});
+
+// =====================
+// 14. عرض المستخدمين باستثناء super_admin (Users without Super Admin)
+// =====================
+Route::middleware(['auth:sanctum', 'role:super_admin'])->group(function () {
+    Route::get('/users-without-super-admin', [App\Http\Controllers\Api\UserController::class, 'indexWithoutSuperAdmin']);
+});
+
+// =====================
+// 13. سجل نشاط المستخدم (User Activity Log)
+// =====================
+Route::middleware(['auth:sanctum', 'role:super_admin'])->group(function () {
+    Route::get('/super-admin/added-users', [App\Http\Controllers\Api\UserActivityLogController::class, 'getAddedUsersBySuperAdmin']);
+    Route::get('/super-admin/users/{user}/role-history', [App\Http\Controllers\Api\UserActivityLogController::class, 'getUserRoleHistory']);
+});

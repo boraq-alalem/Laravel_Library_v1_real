@@ -9,6 +9,11 @@ class Author extends Model
     use HasFactory;
     protected $fillable = ['name'];
 
+    protected $hidden = [
+        'created_at',
+        'updated_at',
+    ];
+
     public function theses()
     {
         return $this->hasMany(Thesis::class);

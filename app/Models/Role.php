@@ -8,6 +8,11 @@ use App\Models\User;
 
 class Role extends Model
 {
+    protected $hidden = [
+        'created_at',
+        'updated_at',
+    ];
+
     public function permissions()
     {
         return $this->belongsToMany(Permission::class, 'role_permission');
