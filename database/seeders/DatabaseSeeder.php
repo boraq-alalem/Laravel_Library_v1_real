@@ -10,6 +10,7 @@ use Database\Seeders\RoleSeeder;
 use Database\Seeders\PermissionSeeder;
 use Database\Seeders\RolePermissionSeeder;
 use Database\Seeders\UserSeeder;
+use Database\Seeders\SpecializationsFromFoldersSeeder; // إضافة استخدام Seeder التخصصات الجديدة
 // use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
@@ -27,7 +28,8 @@ class DatabaseSeeder extends Seeder
             UserSeeder::class,
             ImportThesesSeeder::class,
             ImportReservedThesisTitlesSeeder::class,
-            ImportThesisTitlesSimpleSeeder::class,
+            SpecializationsFromFoldersSeeder::class, // إضافة Seeder التخصصات الجديدة
+            // ImportThesisTitlesSimpleSeeder::class, // تم إلغاء Seed لهذا الجدول
         ]);
     }
 }
