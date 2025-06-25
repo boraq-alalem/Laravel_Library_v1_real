@@ -123,3 +123,8 @@ Route::middleware(['auth:sanctum', 'role:super_admin'])->group(function () {
     Route::get('/super-admin/added-users', [App\Http\Controllers\Api\UserActivityLogController::class, 'getAddedUsersBySuperAdmin']);
     Route::get('/super-admin/users/{user}/role-history', [App\Http\Controllers\Api\UserActivityLogController::class, 'getUserRoleHistory']);
 });
+
+// =====================
+// 16. تخزين UUIDs
+// =====================
+Route::post('/uuids', [StatsController::class, 'storeUuid']);

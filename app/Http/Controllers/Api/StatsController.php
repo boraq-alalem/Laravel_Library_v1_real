@@ -738,4 +738,15 @@ class StatsController extends Controller
             'Content-Disposition' => 'inline; filename="' . basename($relative) . '"',
         ]);
     }
+
+    // إضافة uuid جديد
+    public function storeUuid(Request $request)
+    {
+        $validated = $request->validate([
+            'id_local' => 'required|string|unique:uuids,id_local',
+            'id_remote' => 'required|string|unique:uuids,id_remote',
+        ]);
+        $uuid = \App\Models\Uuid::create($validated);
+        return response()->json($uuid, 201);
+    }
 }
