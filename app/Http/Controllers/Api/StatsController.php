@@ -168,8 +168,14 @@ class StatsController extends Controller
 
         // تحديث الحقول بدون pdf_path إذا لم يتم رفع ملف جديد
         $updateData = $request->only([
-            'title', 'year', 'university_id', 'specialization_id', 'degree_id', 'author_id'
+            'title', 'university_id', 'specialization_id', 'degree_id', 'author_id', 'year'
         ]);
+        // إذا لم يرسل المستخدم year، احفظ السنة والشهر الحاليين
+        if (!$request->filled('year')) {
+            $currentYear = date('Y');
+            $currentMonth = date('m');
+            $updateData['year'] = $currentYear . '-' . $currentMonth;
+        }
         // إذا تم رفع ملف PDF جديد
         if ($request->hasFile('pdf')) {
             // حذف ملف PDF القديم إذا كان موجوداً
@@ -378,14 +384,19 @@ class StatsController extends Controller
         $pdfName = $pdfFile->getClientOriginalName();
         $relativePath = "$targetDir/$pdfName";
         $pdfPath = $pdfFile->storeAs($targetDir, $pdfName, 'public');
-
-        // حفظ المسار في قاعدة البيانات مع /storage/ في البداية
+        
+        // تحديد المسار النسبي الذي سيخزن في قاعدة البيانات
         $dbPdfPath = '/storage/' . $relativePath;
+
+        // حفظ السنة والشهر معاً في حقل year
+        $currentYear = date('Y');
+        $currentMonth = date('m');
+        $yearMonth = $currentYear . '-' . $currentMonth;
 
         // إنشاء الرسالة في قاعدة البيانات
         $thesis = Thesis::create([
             'title' => $validated['title'],
-            'year' => $validated['year'],
+            'year' => $yearMonth,
             'pdf_path' => $dbPdfPath,
             'university_id' => $validated['university_id'],
             'specialization_id' => $validated['specialization_id'],
