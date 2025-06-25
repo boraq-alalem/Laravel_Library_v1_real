@@ -64,6 +64,8 @@ Route::put('/reserved-thesis-titles/{id}', [StatsController::class, 'updateReser
 Route::delete('/reserved-thesis-titles/{id}', [StatsController::class, 'deleteReservedThesisTitle']);
 Route::get('/reserved-thesis-titles-search', [StatsController::class, 'searchReservedThesisTitles']);
 Route::get('/reserved-thesis-titles-search-guests', [StatsController::class, 'searchReservedThesisTitlesForGuests']);
+Route::get('/reserved-thesis-titles-search-person', [StatsController::class, 'searchReservedThesisTitlesByPerson']);
+Route::get('/reserved-thesis-titles-search-person-guests', [StatsController::class, 'searchReservedThesisTitlesByPersonForGuests']);
 
 // =====================
 // 8. ملفات PDF المشفرة

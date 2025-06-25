@@ -360,6 +360,13 @@ class StatsController extends Controller
             'pdf' => 'required|file|mimes:pdf|max:20480', // 20MB
         ]);
 
+        // التحقق من وجود عنوان الرسالة مسبقاً
+        if (Thesis::where('title', $validated['title'])->exists()) {
+            return response()->json([
+                'message' => 'العنوان موجود بالفعل'
+            ], 409);
+        }
+
         // إنشاء أو جلب الباحث
         $author = Author::firstOrCreate(['name' => $validated['author_name']]);
 
@@ -369,7 +376,8 @@ class StatsController extends Controller
         $university = University::find($validated['university_id']);
 
         // تجهيز المسار المطلوب
-        $basePath = 'pdfs/json_content';
+        // $basePath = 'pdfs/json_content'; // المسار القديم (تم تعليقه بناءً على طلبك)
+        $basePath = 'pdfs/json_content_new'; // المسار الجديد لحفظ الرسائل الجديدة
         $degreeName = $degree ? $degree->name : 'بدون_درجة';
         $specializationName = $specialization ? $specialization->name : 'بدون_تخصص';
         $authorName = $author->name;
@@ -379,9 +387,10 @@ class StatsController extends Controller
         $authorFolder = preg_replace('/\s+/u', '_', $authorName);
         $targetDir = "$basePath/$degreeFolder/$specializationFolder/$authorFolder";
 
-        // حفظ ملف PDF في المسار الجديد
+        // حفظ ملف PDF في المسار الجديد باسم الشخص
         $pdfFile = $request->file('pdf');
-        $pdfName = $pdfFile->getClientOriginalName();
+        $pdfExtension = $pdfFile->getClientOriginalExtension();
+        $pdfName = $authorFolder . '.' . $pdfExtension; // اسم الملف = اسم الشخص
         $relativePath = "$targetDir/$pdfName";
         $pdfPath = $pdfFile->storeAs($targetDir, $pdfName, 'public');
         
@@ -566,6 +575,12 @@ class StatsController extends Controller
             'degree' => 'required|string',
             'date' => 'required|string',
         ]);
+        // التحقق من وجود عنوان محجوز مسبقاً
+        if (ReservedThesisTitle::where('title', $validated['title'])->exists()) {
+            return response()->json([
+                'message' => 'العنوان موجود بالفعل'
+            ], 409);
+        }
         $item = ReservedThesisTitle::create($validated);
         return response()->json($item, 201);
     }
@@ -601,6 +616,30 @@ class StatsController extends Controller
         $items = ReservedThesisTitle::select('id', 'title', 'person_name', 'university', 'specialization', 'degree', 'date')
             ->when($q, function($query) use ($q) {
                 $query->where('title', 'like', "%$q%");
+            })
+            ->get();
+        return response()->json($items);
+    }
+
+    // البحث عن طريق اسم الشخص فقط في العناوين المحجوزة
+    public function searchReservedThesisTitlesByPerson(Request $request)
+    {
+        $q = $request->input('q');
+        $items = ReservedThesisTitle::select('id', 'title', 'person_name', 'university', 'specialization', 'degree', 'date')
+            ->when($q, function($query) use ($q) {
+                $query->where('person_name', 'like', "%$q%");
+            })
+            ->get();
+        return response()->json($items);
+    }
+
+    // البحث عن طريق اسم الشخص فقط في العناوين المحجوزة (للضيوف بدون id)
+    public function searchReservedThesisTitlesByPersonForGuests(Request $request)
+    {
+        $q = $request->input('q');
+        $items = ReservedThesisTitle::select('title', 'person_name', 'university', 'specialization', 'degree', 'date')
+            ->when($q, function($query) use ($q) {
+                $query->where('person_name', 'like', "%$q%");
             })
             ->get();
         return response()->json($items);
