@@ -128,3 +128,9 @@ Route::middleware(['auth:sanctum', 'role:super_admin'])->group(function () {
 // 16. تخزين UUIDs
 // =====================
 Route::post('/uuids', [StatsController::class, 'storeUuid']);
+// عرض جميع العناصر مع id_local و id_remote فقط
+Route::get('/uuids', [StatsController::class, 'listUuids']);
+// البحث عن عنصر حسب id_local أو id_remote
+Route::get('/uuids/search', [StatsController::class, 'searchUuid']);
+// حذف عنصر حسب id_local أو id_remote
+Route::delete('/uuids', [StatsController::class, 'deleteUuid']);

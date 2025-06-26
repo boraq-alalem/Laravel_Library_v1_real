@@ -749,4 +749,39 @@ class StatsController extends Controller
         $uuid = \App\Models\Uuid::create($validated);
         return response()->json($uuid, 201);
     }
+
+    // عرض جميع العناصر مع id_local و id_remote فقط
+    public function listUuids()
+    {
+        $items = \App\Models\Uuid::select('id', 'id_local', 'id_remote')->get();
+        return response()->json($items);
+    }
+
+    // البحث عن عنصر حسب id_local أو id_remote
+    public function searchUuid(Request $request)
+    {
+        $query = \App\Models\Uuid::query();
+        if ($request->filled('id_local')) {
+            $query->where('id_local', $request->id_local);
+        }
+        if ($request->filled('id_remote')) {
+            $query->where('id_remote', $request->id_remote);
+        }
+        $items = $query->select('id', 'id_local', 'id_remote')->get();
+        return response()->json($items);
+    }
+
+    // حذف عنصر حسب id_local أو id_remote
+    public function deleteUuid(Request $request)
+    {
+        $query = \App\Models\Uuid::query();
+        if ($request->filled('id_local')) {
+            $query->where('id_local', $request->id_local);
+        }
+        if ($request->filled('id_remote')) {
+            $query->where('id_remote', $request->id_remote);
+        }
+        $count = $query->delete();
+        return response()->json(['deleted' => $count > 0, 'count' => $count]);
+    }
 }
