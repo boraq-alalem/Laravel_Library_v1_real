@@ -26,9 +26,9 @@ class DatabaseSeeder extends Seeder
             PermissionSeeder::class,
             RolePermissionSeeder::class,
             UserSeeder::class,
-            ImportThesesSeeder::class,
+            JsonUniversitiesAndSpecializationsSeeder::class, // أولاً: الجامعات والتخصصات والربط
+            ImportThesesSeeder::class, // ثانياً: الرسائل العلمية
             ImportReservedThesisTitlesSeeder::class,
-            JsonUniversitiesAndSpecializationsSeeder::class, // استخدام Seeder الجديد
             // SpecializationsFromFoldersSeeder::class, // تم تعطيله
             // ImportThesisTitlesSimpleSeeder::class, // تم إلغاء Seed لهذا الجدول
         ]);

@@ -12,6 +12,11 @@ class ImportThesesSeeder extends Seeder
 {
     public function run(): void
     {
+        // حذف جميع بيانات جدول theses قبل التعبئة
+        \DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+        \DB::table('theses')->truncate();
+        \DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+
         $basePath = base_path('storage/app/public/pdfs/json_content');
         $rii = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($basePath));
         $logFile = base_path('storage/app/public/pdfs/import_log.txt');
@@ -42,8 +47,14 @@ class ImportThesesSeeder extends Seeder
                 $skipped++;
                 continue;
             }
-            $university = University::firstOrCreate(['name' => $data['اسم الجامعة او الكلية']]);
-            $specialization = Specialization::firstOrCreate(['name' => $data['التخصص']]);
+            // Get university and specialization by name only (do not create new)
+            $university = University::where('name', $data['اسم الجامعة او الكلية'])->first();
+            $specialization = Specialization::where('name', $data['التخصص'])->first();
+            if (!$university || !$specialization) {
+                file_put_contents($logFile, "[SKIP] Not found: $jsonPath | Univ: {$data['اسم الجامعة او الكلية']} | Spec: {$data['التخصص']}\n", FILE_APPEND);
+                $skipped++;
+                continue;
+            }
             $degree = Degree::firstOrCreate(['name' => $data['الدرجة العلمية']]);
             $author = Author::firstOrCreate(['name' => $data['اسم الشخص']]);
             $university->specializations()->syncWithoutDetaching([$specialization->id]);
