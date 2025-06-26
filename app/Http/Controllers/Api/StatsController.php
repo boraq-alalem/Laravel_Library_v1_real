@@ -155,7 +155,7 @@ class StatsController extends Controller
         $oldDegreeFolder = preg_replace('/\s+/u', '_', $oldDegree);
         $oldSpecializationFolder = preg_replace('/\s+/u', '_', $oldSpecialization);
         $oldAuthorFolder = preg_replace('/\s+/u', '_', $oldAuthor);
-        $basePath = 'pdfs/json_content';
+        $basePath = 'pdfs/json_content_new';
         $oldDir = "$basePath/$oldDegreeFolder/$oldSpecializationFolder/$oldAuthorFolder";
         $oldPdfPath = $thesis->pdf_path;
         $oldJsonFile = $oldAuthorFolder . '.json';
@@ -376,7 +376,7 @@ class StatsController extends Controller
         $university = University::find($validated['university_id']);
 
         // تجهيز المسار المطلوب
-        // $basePath = 'pdfs/json_content'; // المسار القديم (تم تعليقه بناءً على طلبك)
+        // $basePath = 'pdfs/json_content_new'; // المسار القديم (تم تعليقه بناءً على طلبك)
         $basePath = 'pdfs/json_content_new'; // المسار الجديد لحفظ الرسائل الجديدة
         $degreeName = $degree ? $degree->name : 'بدون_درجة';
         $specializationName = $specialization ? $specialization->name : 'بدون_تخصص';
@@ -721,8 +721,8 @@ class StatsController extends Controller
             $relative = ltrim(strstr($realPath, '/storage/'), '/storage/');
         } elseif (strpos($realPath, 'pdfs/') !== false) {
             $relative = substr($realPath, strpos($realPath, 'pdfs/'));
-        } elseif (strpos($realPath, 'json_content/') !== false) {
-            $relative = substr($realPath, strpos($realPath, 'json_content/'));
+        } elseif (strpos($realPath, 'json_content_new/') !== false) {
+            $relative = substr($realPath, strpos($realPath, 'json_content_new/'));
         } else {
             $relative = ltrim($realPath, '/');
         }
