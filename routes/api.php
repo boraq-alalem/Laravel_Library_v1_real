@@ -134,3 +134,14 @@ Route::get('/uuids', [StatsController::class, 'listUuids']);
 Route::get('/uuids/search', [StatsController::class, 'searchUuid']);
 // حذف عنصر حسب id_local أو id_remote
 Route::delete('/uuids', [StatsController::class, 'deleteUuid']);
+
+// =====================
+// 17. تخزين User UUIDs
+// =====================
+Route::post('/user-uuids', [StatsController::class, 'storeUserUuid']);
+// عرض جميع العناصر مع id_local و id_remote فقط
+Route::get('/user-uuids', [StatsController::class, 'listUserUuids']);
+// البحث عن عنصر حسب id_local أو id_remote أو user_id
+Route::get('/user-uuids/search', [StatsController::class, 'searchUserUuid']);
+// حذف عنصر حسب id_local أو id_remote أو user_id
+Route::delete('/user-uuids', [StatsController::class, 'deleteUserUuid']);

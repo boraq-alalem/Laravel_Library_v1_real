@@ -784,4 +784,51 @@ class StatsController extends Controller
         $count = $query->delete();
         return response()->json(['deleted' => $count > 0, 'count' => $count]);
     }
+
+    // ========== user_uuids endpoints ==========
+    // إضافة user_uuid جديد
+    public function storeUserUuid(Request $request)
+    {
+        $validated = $request->validate([
+            'id_local' => 'required|string|unique:user_uuids,id_local',
+            'id_remote' => 'required|string|unique:user_uuids,id_remote',
+        ]);
+        $userUuid = \App\Models\UserUuid::create($validated);
+        return response()->json($userUuid, 201);
+    }
+
+    // عرض جميع العناصر مع id_local و id_remote فقط
+    public function listUserUuids()
+    {
+        $items = \App\Models\UserUuid::select('id', 'id_local', 'id_remote')->get();
+        return response()->json($items);
+    }
+
+    // البحث عن عنصر حسب id_local أو id_remote
+    public function searchUserUuid(Request $request)
+    {
+        $query = \App\Models\UserUuid::query();
+        if ($request->filled('id_local')) {
+            $query->where('id_local', $request->id_local);
+        }
+        if ($request->filled('id_remote')) {
+            $query->where('id_remote', $request->id_remote);
+        }
+        $items = $query->select('id', 'id_local', 'id_remote')->get();
+        return response()->json($items);
+    }
+
+    // حذف عنصر حسب id_local أو id_remote
+    public function deleteUserUuid(Request $request)
+    {
+        $query = \App\Models\UserUuid::query();
+        if ($request->filled('id_local')) {
+            $query->where('id_local', $request->id_local);
+        }
+        if ($request->filled('id_remote')) {
+            $query->where('id_remote', $request->id_remote);
+        }
+        $count = $query->delete();
+        return response()->json(['deleted' => $count > 0, 'count' => $count]);
+    }
 }
