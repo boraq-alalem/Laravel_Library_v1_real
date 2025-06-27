@@ -15,6 +15,7 @@ Route::get('/stats', [StatsController::class, 'index']);
 Route::get('/theses/latest', [StatsController::class, 'latestTheses']);
 Route::get('/theses/search', [StatsController::class, 'searchTheses']);
 Route::get('/theses/search-guests', [StatsController::class, 'searchThesesForGuests']);
+Route::get('/theses/{id}', [StatsController::class, 'showThesis']); // البحث عن رسالة بالمعرّف
 Route::post('/theses', [StatsController::class, 'storeThesis']);
 Route::put('/theses/{id}', [StatsController::class, 'updateThesis']);
 Route::delete('/theses/{id}', [StatsController::class, 'deleteThesis']);

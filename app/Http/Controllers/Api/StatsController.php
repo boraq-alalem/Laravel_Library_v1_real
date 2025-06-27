@@ -831,4 +831,32 @@ class StatsController extends Controller
         $count = $query->delete();
         return response()->json(['deleted' => $count > 0, 'count' => $count]);
     }
+
+    // جلب رسالة واحدة بالمعرّف
+    public function showThesis($id)
+    {
+        $thesis = Thesis::with(['author', 'university', 'specialization', 'degree'])->findOrFail($id);
+        return response()->json([
+            'id' => $thesis->id,
+            'title' => $thesis->title,
+            'year' => $thesis->year,
+            'pdf_path' => $thesis->pdf_path ? '/api/pdf/' . PdfPathHelper::encryptPath($thesis->pdf_path) : null,
+            'university' => $thesis->university ? [
+                'id' => $thesis->university->id,
+                'name' => $thesis->university->name,
+            ] : null,
+            'specialization' => $thesis->specialization ? [
+                'id' => $thesis->specialization->id,
+                'name' => $thesis->specialization->name,
+            ] : null,
+            'degree' => $thesis->degree ? [
+                'id' => $thesis->degree->id,
+                'name' => $thesis->degree->name,
+            ] : null,
+            'author' => $thesis->author ? [
+                'id' => $thesis->author->id,
+                'name' => $thesis->author->name,
+            ] : null,
+        ]);
+    }
 }
