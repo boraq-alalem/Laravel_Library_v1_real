@@ -35,6 +35,12 @@ Route::get('/universities-with-specializations', [StatsController::class, 'unive
 Route::get('/universities-with-specializations-guests', [StatsController::class, 'universitiesWithSpecializationsForGuests']);
 Route::get('/universities/search', [StatsController::class, 'searchUniversities']);
 Route::post('/universities/{university}/add-specialization', [StatsController::class, 'addSpecializationToUniversity']);
+Route::post('/universities', [StatsController::class, 'storeUniversity']); // إضافة جامعة جديدة
+Route::delete('/universities/{id}', [StatsController::class, 'deleteUniversity']); // حذف جامعة
+
+Route::post('/specializations', [StatsController::class, 'storeSpecialization']); // إضافة تخصص جديد
+Route::delete('/specializations/{id}', [StatsController::class, 'deleteSpecialization']); // حذف تخصص
+Route::get('/specializations/search', [StatsController::class, 'searchSpecializations']); // بحث عن تخصص
 
 // =====================
 // 5. الأرشيف (Archived Theses)

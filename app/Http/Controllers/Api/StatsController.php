@@ -16,27 +16,60 @@ use Illuminate\Support\Facades\Response;
 use Illuminate\Support\Facades\Storage;
 use App\Helpers\PdfPathHelper;
 
+
+
+
 class StatsController extends Controller
 {
-    public function index()
+    public function storeUniversity(Request $request)
     {
-        $totalTheses = Thesis::count();
-        $masterDegree = Degree::where('name', 'like', '%ماجستير%')->first();
-        $phdDegree = Degree::where('name', 'like', '%دكتوراه%')->first();
-        $masterTheses = $masterDegree ? Thesis::where('degree_id', $masterDegree->id)->count() : 0;
-        $phdTheses = $phdDegree ? Thesis::where('degree_id', $phdDegree->id)->count() : 0;
-        $totalAuthors = Author::count();
-        $totalUniversities = University::count();
-        $totalSpecializations = Specialization::count();
-
-        return response()->json([
-            'total_theses' => $totalTheses,
-            'master_theses' => $masterTheses,
-            'phd_theses' => $phdTheses,
-            'total_authors' => $totalAuthors,
-            'total_universities' => $totalUniversities,
-            'total_specializations' => $totalSpecializations,
+        $validated = $request->validate([
+            'id' => 'required|integer|unique:universities,id',
+            'name' => 'required|string|unique:universities,name',
         ]);
+        $university = University::create($validated);
+        return response()->json(['id' => $university->id, 'name' => $university->name], 201);
+    }
+
+    // حذف جامعة
+    public function deleteUniversity($id)
+    {
+        $university = University::findOrFail($id);
+        $university->delete();
+        return response()->json(['message' => 'تم حذف الجامعة بنجاح']);
+    }
+
+    // إضافة تخصص جديد
+    public function storeSpecialization(Request $request)
+    {
+        $validated = $request->validate([
+            'id' => 'required|integer|unique:specializations,id',
+            'name' => 'required|string|unique:specializations,name',
+        ]);
+        $specialization = Specialization::create($validated);
+        return response()->json(['id' => $specialization->id, 'name' => $specialization->name], 201);
+    }
+
+    // حذف تخصص
+    public function deleteSpecialization($id)
+    {
+        $specialization = Specialization::findOrFail($id);
+        $specialization->delete();
+        return response()->json(['message' => 'تم حذف التخصص بنجاح']);
+    }
+
+    // بحث عن تخصص
+    public function searchSpecializations(Request $request)
+    {
+        $query = Specialization::query();
+        if ($request->filled('id')) {
+            $query->where('id', $request->id);
+        }
+        if ($request->filled('name')) {
+            $query->where('name', 'like', '%' . $request->name . '%');
+        }
+        $specializations = $query->get(['id', 'name']);
+        return response()->json($specializations);
     }
 
     public function latestTheses()
@@ -340,7 +373,10 @@ class StatsController extends Controller
 
     public function searchUniversities(Request $request)
     {
-        $query = University::with('specializations:id,name');
+        $query = University::query();
+        if ($request->filled('id')) {
+            $query->where('id', $request->id);
+        }
         if ($request->filled('name')) {
             $query->where('name', 'like', '%' . $request->name . '%');
         }
