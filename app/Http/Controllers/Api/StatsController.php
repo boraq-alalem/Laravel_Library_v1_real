@@ -48,7 +48,10 @@ class StatsController extends Controller
             'id' => 'required|integer|unique:universities,id',
             'name' => 'required|string|unique:universities,name',
         ]);
-        $university = University::create($validated);
+        $university = new University();
+        $university->id = $validated['id'];
+        $university->name = $validated['name'];
+        $university->save();
         return response()->json(['id' => $university->id, 'name' => $university->name], 201);
     }
 
@@ -67,7 +70,10 @@ class StatsController extends Controller
             'id' => 'required|integer|unique:specializations,id',
             'name' => 'required|string|unique:specializations,name',
         ]);
-        $specialization = Specialization::create($validated);
+        $specialization = new Specialization();
+        $specialization->id = $validated['id'];
+        $specialization->name = $validated['name'];
+        $specialization->save();
         return response()->json(['id' => $specialization->id, 'name' => $specialization->name], 201);
     }
 
