@@ -25,23 +25,25 @@ class StatsController extends Controller
     // إحصائيات عامة
     public function index()
     {
-        $totalTheses = Thesis::count();
-        $masterDegree = Degree::where('name', 'like', '%ماجستير%')->first();
-        $phdDegree = Degree::where('name', 'like', '%دكتوراه%')->first();
-        $masterTheses = $masterDegree ? Thesis::where('degree_id', $masterDegree->id)->count() : 0;
-        $phdTheses = $phdDegree ? Thesis::where('degree_id', $phdDegree->id)->count() : 0;
-        $totalAuthors = Author::count();
-        $totalUniversities = University::count();
-        $totalSpecializations = Specialization::count();
+        return Cache::remember('stats_index', 600, function() {
+            $totalTheses = Thesis::count();
+            $masterDegree = Degree::where('name', 'like', '%ماجستير%')->first();
+            $phdDegree = Degree::where('name', 'like', '%دكتوراه%')->first();
+            $masterTheses = $masterDegree ? Thesis::where('degree_id', $masterDegree->id)->count() : 0;
+            $phdTheses = $phdDegree ? Thesis::where('degree_id', $phdDegree->id)->count() : 0;
+            $totalAuthors = Author::count();
+            $totalUniversities = University::count();
+            $totalSpecializations = Specialization::count();
 
-        return response()->json([
-            'total_theses' => $totalTheses,
-            'master_theses' => $masterTheses,
-            'phd_theses' => $phdTheses,
-            'total_authors' => $totalAuthors,
-            'total_universities' => $totalUniversities,
-            'total_specializations' => $totalSpecializations,
-        ]);
+            return response()->json([
+                'total_theses' => $totalTheses,
+                'master_theses' => $masterTheses,
+                'phd_theses' => $phdTheses,
+                'total_authors' => $totalAuthors,
+                'total_universities' => $totalUniversities,
+                'total_specializations' => $totalSpecializations,
+            ]);
+        });
     }
     public function storeUniversity(Request $request)
     {
@@ -102,7 +104,13 @@ class StatsController extends Controller
 
     public function latestTheses()
     {
-        $theses = Thesis::with(['author', 'university', 'specialization', 'degree'])
+        $theses = Thesis::select('id', 'title', 'year', 'pdf_path', 'author_id', 'university_id', 'specialization_id', 'degree_id')
+            ->with([
+                'author:id,name',
+                'university:id,name',
+                'specialization:id,name',
+                'degree:id,name'
+            ])
             ->latest('id')
             ->take(10)
             ->get();
@@ -138,8 +146,14 @@ class StatsController extends Controller
     {
         $cacheKey = 'search:' . md5($request->fullUrl());
         
-        return Cache::remember($cacheKey, 300, function() use ($request) {
-            $query = Thesis::with(['author', 'university', 'specialization', 'degree']);
+        return Cache::remember($cacheKey, 600, function() use ($request) {
+            $query = Thesis::select('id', 'title', 'year', 'pdf_path', 'author_id', 'university_id', 'specialization_id', 'degree_id')
+                ->with([
+                    'author:id,name',
+                    'university:id,name',
+                    'specialization:id,name', 
+                    'degree:id,name'
+                ]);
             if ($request->filled('author')) {
                 $query->whereHas('author', function($q) use ($request) {
                     $q->where('name', 'like', '%' . $request->author . '%');
@@ -160,7 +174,7 @@ class StatsController extends Controller
             if ($request->filled('year')) {
                 $query->where('year', $request->year);
             }
-            $theses = $query->latest('id')->take(50)->get();
+            $theses = $query->latest('id')->take(10)->get();
             $result = $theses->map(function($thesis) {
                 return [
                     'id' => $thesis->id,
