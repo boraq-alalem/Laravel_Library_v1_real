@@ -14,6 +14,7 @@ use App\Models\ThesisTitlesSimple;
 use App\Models\ReservedThesisTitle;
 use Illuminate\Support\Facades\Response;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Cache;
 use App\Helpers\PdfPathHelper;
 
 
@@ -135,54 +136,57 @@ class StatsController extends Controller
 
     public function searchTheses(Request $request)
     {
-        $query = Thesis::with(['author', 'university', 'specialization', 'degree']);
-        if ($request->filled('author')) {
-            $query->whereHas('author', function($q) use ($request) {
-                $q->where('name', 'like', '%' . $request->author . '%');
+        $cacheKey = 'search:' . md5($request->fullUrl());
+        
+        return Cache::remember($cacheKey, 300, function() use ($request) {
+            $query = Thesis::with(['author', 'university', 'specialization', 'degree']);
+            if ($request->filled('author')) {
+                $query->whereHas('author', function($q) use ($request) {
+                    $q->where('name', 'like', '%' . $request->author . '%');
+                });
+            }
+            if ($request->filled('title')) {
+                $query->where('title', 'like', '%' . $request->title . '%');
+            }
+            if ($request->filled('specialization_id')) {
+                $query->where('specialization_id', $request->specialization_id);
+            }
+            if ($request->filled('university_id')) {
+                $query->where('university_id', $request->university_id);
+            }
+            if ($request->filled('degree_id')) {
+                $query->where('degree_id', $request->degree_id);
+            }
+            if ($request->filled('year')) {
+                $query->where('year', $request->year);
+            }
+            $theses = $query->latest('id')->take(50)->get();
+            $result = $theses->map(function($thesis) {
+                return [
+                    'id' => $thesis->id,
+                    'title' => $thesis->title,
+                    'year' => $thesis->year,
+                    'pdf_path' => $thesis->pdf_path ? '/api/pdf/' . PdfPathHelper::encryptPath($thesis->pdf_path) : null,
+                    'university' => $thesis->university ? [
+                        'id' => $thesis->university->id,
+                        'name' => $thesis->university->name,
+                    ] : null,
+                    'specialization' => $thesis->specialization ? [
+                        'id' => $thesis->specialization->id,
+                        'name' => $thesis->specialization->name,
+                    ] : null,
+                    'degree' => $thesis->degree ? [
+                        'id' => $thesis->degree->id,
+                        'name' => $thesis->degree->name,
+                    ] : null,
+                    'author' => $thesis->author ? [
+                        'id' => $thesis->author->id,
+                        'name' => $thesis->author->name,
+                    ] : null,
+                ];
             });
-        }
-        if ($request->filled('title')) {
-            $query->where('title', 'like', '%' . $request->title . '%');
-        }
-        if ($request->filled('specialization_id')) {
-            $query->where('specialization_id', $request->specialization_id);
-        }
-        if ($request->filled('university_id')) {
-            $query->where('university_id', $request->university_id);
-        }
-        if ($request->filled('degree_id')) {
-            $query->where('degree_id', $request->degree_id);
-        }
-        if ($request->filled('year')) {
-            $query->where('year', $request->year);
-        }
-        $theses = $query->latest('id')->get();
-        $result = $theses->map(function($thesis) {
-            return [
-                'id' => $thesis->id,
-                'title' => $thesis->title,
-                'year' => $thesis->year,
-                // تشفير مسار PDF فقط بدون أي دومين أو بادئة
-                'pdf_path' => $thesis->pdf_path ? '/api/pdf/' . PdfPathHelper::encryptPath($thesis->pdf_path) : null,
-                'university' => $thesis->university ? [
-                    'id' => $thesis->university->id,
-                    'name' => $thesis->university->name,
-                ] : null,
-                'specialization' => $thesis->specialization ? [
-                    'id' => $thesis->specialization->id,
-                    'name' => $thesis->specialization->name,
-                ] : null,
-                'degree' => $thesis->degree ? [
-                    'id' => $thesis->degree->id,
-                    'name' => $thesis->degree->name,
-                ] : null,
-                'author' => $thesis->author ? [
-                    'id' => $thesis->author->id,
-                    'name' => $thesis->author->name,
-                ] : null,
-            ];
+            return response()->json($result->values());
         });
-        return response()->json($result->values());
     }
 
     public function allSpecializations()

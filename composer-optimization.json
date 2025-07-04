@@ -1,0 +1,15 @@
+{
+    "require": {
+        "laravel/octane": "^2.0",
+        "predis/predis": "^2.0"
+    },
+    "require-dev": {
+        "laravel/telescope": "^5.0",
+        "barryvdh/laravel-debugbar": "^3.9"
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "classmap-authoritative": true,
+        "apcu-autoloader": true
+    }
+}

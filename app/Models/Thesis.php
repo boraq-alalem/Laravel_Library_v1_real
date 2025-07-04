@@ -1,12 +1,13 @@
 <?php
 namespace App\Models;
 
+use App\Traits\OptimizedQueries;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Thesis extends Model
 {
-    use HasFactory;
+    use HasFactory, OptimizedQueries;
     protected $fillable = [
         'id', 'title', 'year', 'pdf_path', 'university_id', 'specialization_id', 'degree_id', 'author_id'
     ];
