@@ -102,51 +102,70 @@ class StatsController extends Controller
         return response()->json($specializations);
     }
 
-    public function latestTheses()
+    public function latestTheses(Request $request)
     {
-        $theses = Thesis::select('id', 'title', 'year', 'pdf_path', 'author_id', 'university_id', 'specialization_id', 'degree_id')
-            ->with([
-                'author:id,name',
-                'university:id,name',
-                'specialization:id,name',
-                'degree:id,name'
-            ])
-            ->latest('id')
-            ->take(10)
-            ->get();
-        $result = $theses->map(function($thesis) {
-            return [
-                'id' => $thesis->id,
-                'title' => $thesis->title,
-                'year' => $thesis->year,
-                // تشفير مسار PDF فقط بدون أي دومين أو بادئة
-                'pdf_path' => $thesis->pdf_path ? '/api/pdf/' . PdfPathHelper::encryptPath($thesis->pdf_path) : null,
-                'university' => $thesis->university ? [
-                    'id' => $thesis->university->id,
-                    'name' => $thesis->university->name,
-                ] : null,
-                'specialization' => $thesis->specialization ? [
-                    'id' => $thesis->specialization->id,
-                    'name' => $thesis->specialization->name,
-                ] : null,
-                'degree' => $thesis->degree ? [
-                    'id' => $thesis->degree->id,
-                    'name' => $thesis->degree->name,
-                ] : null,
-                'author' => $thesis->author ? [
-                    'id' => $thesis->author->id,
-                    'name' => $thesis->author->name,
-                ] : null,
-            ];
+        $page = $request->get('page', 1);
+        $perPage = $request->get('per_page', 20);
+        
+        return Cache::remember('latest_theses_' . $page . '_' . $perPage, 300, function() use ($page, $perPage) {
+            $total = Thesis::count();
+            $theses = Thesis::select('id', 'title', 'year', 'pdf_path', 'author_id', 'university_id', 'specialization_id', 'degree_id')
+                ->with([
+                    'author:id,name',
+                    'university:id,name',
+                    'specialization:id,name',
+                    'degree:id,name'
+                ])
+                ->latest('id')
+                ->skip(($page - 1) * $perPage)
+                ->take($perPage)
+                ->get();
+            $result = $theses->map(function($thesis) {
+                return [
+                    'id' => $thesis->id,
+                    'title' => $thesis->title,
+                    'year' => $thesis->year,
+                    // تشفير مسار PDF فقط بدون أي دومين أو بادئة
+                    'pdf_path' => $thesis->pdf_path ? '/api/pdf/' . PdfPathHelper::encryptPath($thesis->pdf_path) : null,
+                    'university' => $thesis->university ? [
+                        'id' => $thesis->university->id,
+                        'name' => $thesis->university->name,
+                    ] : null,
+                    'specialization' => $thesis->specialization ? [
+                        'id' => $thesis->specialization->id,
+                        'name' => $thesis->specialization->name,
+                    ] : null,
+                    'degree' => $thesis->degree ? [
+                        'id' => $thesis->degree->id,
+                        'name' => $thesis->degree->name,
+                    ] : null,
+                    'author' => $thesis->author ? [
+                        'id' => $thesis->author->id,
+                        'name' => $thesis->author->name,
+                    ] : null,
+                ];
+            });
+            return response()->json([
+                'data' => $result->values(),
+                'pagination' => [
+                    'current_page' => $page,
+                    'per_page' => $perPage,
+                    'total' => $total,
+                    'last_page' => ceil($total / $perPage),
+                    'from' => ($page - 1) * $perPage + 1,
+                    'to' => min($page * $perPage, $total)
+                ]
+            ]);
         });
-        return response()->json($result->values());
     }
 
     public function searchTheses(Request $request)
     {
+        $page = $request->get('page', 1);
+        $perPage = $request->get('per_page', 20);
         $cacheKey = 'search:' . md5($request->fullUrl());
         
-        return Cache::remember($cacheKey, 600, function() use ($request) {
+        return Cache::remember($cacheKey, 600, function() use ($request, $page, $perPage) {
             $query = Thesis::select('id', 'title', 'year', 'pdf_path', 'author_id', 'university_id', 'specialization_id', 'degree_id')
                 ->with([
                     'author:id,name',
@@ -174,7 +193,12 @@ class StatsController extends Controller
             if ($request->filled('year')) {
                 $query->where('year', $request->year);
             }
-            $theses = $query->latest('id')->take(10)->get();
+            
+            $total = $query->count();
+            $theses = $query->latest('id')
+                ->skip(($page - 1) * $perPage)
+                ->take($perPage)
+                ->get();
             $result = $theses->map(function($thesis) {
                 return [
                     'id' => $thesis->id,
@@ -199,7 +223,17 @@ class StatsController extends Controller
                     ] : null,
                 ];
             });
-            return response()->json($result->values());
+            return response()->json([
+                'data' => $result->values(),
+                'pagination' => [
+                    'current_page' => $page,
+                    'per_page' => $perPage,
+                    'total' => $total,
+                    'last_page' => ceil($total / $perPage),
+                    'from' => ($page - 1) * $perPage + 1,
+                    'to' => min($page * $perPage, $total)
+                ]
+            ]);
         });
     }
 
