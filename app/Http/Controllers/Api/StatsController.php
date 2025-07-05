@@ -105,7 +105,7 @@ class StatsController extends Controller
     public function latestTheses(Request $request)
     {
         $page = $request->get('page', 1);
-        $perPage = $request->get('per_page', 20);
+        $perPage = $request->get('per_page', 14);
         
         return Cache::remember('latest_theses_' . $page . '_' . $perPage, 300, function() use ($page, $perPage) {
             $total = Thesis::count();
@@ -162,7 +162,7 @@ class StatsController extends Controller
     public function searchTheses(Request $request)
     {
         $page = $request->get('page', 1);
-        $perPage = $request->get('per_page', 20);
+        $perPage = $request->get('per_page', 14);
         $cacheKey = 'search:' . md5($request->fullUrl());
         
         return Cache::remember($cacheKey, 600, function() use ($request, $page, $perPage) {
