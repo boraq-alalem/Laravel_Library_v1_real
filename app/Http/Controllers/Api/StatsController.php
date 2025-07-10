@@ -25,7 +25,7 @@ class StatsController extends Controller
     // إحصائيات عامة
     public function index()
     {
-        return Cache::remember('stats_index', 600, function() {
+        return Cache::rememberForever('stats_index', function() {
             $totalTheses = Thesis::count();
             $masterDegree = Degree::where('name', 'like', '%ماجستير%')->first();
             $phdDegree = Degree::where('name', 'like', '%دكتوراه%')->first();
@@ -107,7 +107,7 @@ class StatsController extends Controller
         $page = $request->get('page', 1);
         $perPage = $request->get('per_page', 14);
         
-        return Cache::remember('latest_theses_' . $page . '_' . $perPage, 7200, function() use ($page, $perPage) {
+        return Cache::rememberForever('latest_theses_' . $page . '_' . $perPage, function() use ($page, $perPage) {
             $total = Thesis::count();
             $theses = Thesis::select('id', 'title', 'year', 'pdf_path', 'author_id', 'university_id', 'specialization_id', 'degree_id')
                 ->with([
@@ -163,17 +163,7 @@ class StatsController extends Controller
     {
         $page = $request->get('page', 1);
         $perPage = $request->get('per_page', 14);
-        $searchParams = [
-            'title' => $request->get('title'),
-            'author' => $request->get('author'),
-            'degree_id' => $request->get('degree_id'),
-            'university_id' => $request->get('university_id'),
-            'specialization_id' => $request->get('specialization_id'),
-            'year' => $request->get('year'),
-            'page' => $page,
-            'per_page' => $perPage
-        ];
-        $cacheKey = 'search_' . md5(json_encode(array_filter($searchParams)));
+        $cacheKey = 'last_successful_search:' . md5($request->fullUrl());
         
         return Cache::remember($cacheKey, 1800, function() use ($request, $page, $perPage) {
             $query = Thesis::select('id', 'title', 'year', 'author_id', 'university_id', 'specialization_id', 'degree_id')
