@@ -163,10 +163,20 @@ class StatsController extends Controller
     {
         $page = $request->get('page', 1);
         $perPage = $request->get('per_page', 14);
-        $cacheKey = 'search:' . md5($request->fullUrl());
+        $searchParams = [
+            'title' => $request->get('title'),
+            'author' => $request->get('author'),
+            'degree_id' => $request->get('degree_id'),
+            'university_id' => $request->get('university_id'),
+            'specialization_id' => $request->get('specialization_id'),
+            'year' => $request->get('year'),
+            'page' => $page,
+            'per_page' => $perPage
+        ];
+        $cacheKey = 'search_' . md5(json_encode(array_filter($searchParams)));
         
-        return Cache::remember($cacheKey, 600, function() use ($request, $page, $perPage) {
-            $query = Thesis::select('id', 'title', 'year', 'pdf_path', 'author_id', 'university_id', 'specialization_id', 'degree_id')
+        return Cache::remember($cacheKey, 1800, function() use ($request, $page, $perPage) {
+            $query = Thesis::select('id', 'title', 'year', 'author_id', 'university_id', 'specialization_id', 'degree_id')
                 ->with([
                     'author:id,name',
                     'university:id,name',
@@ -179,7 +189,7 @@ class StatsController extends Controller
                 });
             }
             if ($request->filled('title')) {
-                $query->where('title', 'like', '%' . $request->title . '%');
+                $query->whereRaw("MATCH(title) AGAINST (? IN BOOLEAN MODE)", [$request->title]);
             }
             if ($request->filled('specialization_id')) {
                 $query->where('specialization_id', $request->specialization_id);
@@ -204,7 +214,6 @@ class StatsController extends Controller
                     'id' => $thesis->id,
                     'title' => $thesis->title,
                     'year' => $thesis->year,
-                    'pdf_path' => $thesis->pdf_path ? '/api/pdf/' . PdfPathHelper::encryptPath($thesis->pdf_path) : null,
                     'university' => $thesis->university ? [
                         'id' => $thesis->university->id,
                         'name' => $thesis->university->name,
