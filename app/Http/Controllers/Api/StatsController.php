@@ -107,7 +107,7 @@ class StatsController extends Controller
         $page = $request->get('page', 1);
         $perPage = $request->get('per_page', 14);
         
-        return Cache::remember('latest_theses_' . $page . '_' . $perPage, 300, function() use ($page, $perPage) {
+        return Cache::remember('latest_theses_' . $page . '_' . $perPage, 7200, function() use ($page, $perPage) {
             $total = Thesis::count();
             $theses = Thesis::select('id', 'title', 'year', 'pdf_path', 'author_id', 'university_id', 'specialization_id', 'degree_id')
                 ->with([
