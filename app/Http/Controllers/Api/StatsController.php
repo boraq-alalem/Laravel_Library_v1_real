@@ -166,7 +166,7 @@ class StatsController extends Controller
         $cacheKey = 'last_successful_search:' . md5($request->fullUrl());
         
         return Cache::remember($cacheKey, 1800, function() use ($request, $page, $perPage) {
-            $query = Thesis::select('id', 'title', 'year', 'author_id', 'university_id', 'specialization_id', 'degree_id')
+            $query = Thesis::select('id', 'title', 'year', 'pdf_path', 'author_id', 'university_id', 'specialization_id', 'degree_id')
                 ->with([
                     'author:id,name',
                     'university:id,name',
@@ -204,6 +204,8 @@ class StatsController extends Controller
                     'id' => $thesis->id,
                     'title' => $thesis->title,
                     'year' => $thesis->year,
+                    // تشفير مسار PDF فقط بدون أي دومين أو بادئة
+                    'pdf_path' => $thesis->pdf_path ? '/api/pdf/' . PdfPathHelper::encryptPath($thesis->pdf_path) : null,
                     'university' => $thesis->university ? [
                         'id' => $thesis->university->id,
                         'name' => $thesis->university->name,
