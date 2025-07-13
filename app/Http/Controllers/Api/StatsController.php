@@ -25,7 +25,8 @@ class StatsController extends Controller
     // إحصائيات عامة
     public function index()
     {
-        return Cache::rememberForever('stats_index', function() {
+        // الكاش لمدة 30 دقيقة بدلاً من الكاش الدائم لتفادي البيانات القديمة
+        return Cache::remember('stats_index', 1800, function() {
             $totalTheses = Thesis::count();
             $masterDegree = Degree::where('name', 'like', '%ماجستير%')->first();
             $phdDegree = Degree::where('name', 'like', '%دكتوراه%')->first();
@@ -107,7 +108,8 @@ class StatsController extends Controller
         $page = $request->get('page', 1);
         $perPage = $request->get('per_page', 14);
         
-        return Cache::rememberForever('latest_theses_' . $page . '_' . $perPage, function() use ($page, $perPage) {
+        // الكاش لمدة 30 دقيقة بدلاً من الكاش الدائم لتفادي البيانات القديمة
+        return Cache::remember('latest_theses_' . $page . '_' . $perPage, 1800, function() use ($page, $perPage) {
             $total = Thesis::count();
             $theses = Thesis::select('id', 'title', 'year', 'pdf_path', 'author_id', 'university_id', 'specialization_id', 'degree_id')
                 ->with([
@@ -183,6 +185,7 @@ class StatsController extends Controller
                 
                 // إذا كان بحث بكلمة واحدة - استخدم FULLTEXT (سريع)
                 if (str_word_count($searchTerm) == 1) {
+                    // تأكد من وجود FULLTEXT INDEX على عمود title في جدول الرسائل لتحسين الأداء
                     $query->whereRaw("MATCH(title) AGAINST (? IN BOOLEAN MODE)", [$searchTerm]);
                 } else {
                     // إذا كان بحث بعبارة - استخدم LIKE (دقيق)
