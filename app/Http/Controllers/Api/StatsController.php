@@ -179,7 +179,15 @@ class StatsController extends Controller
                 });
             }
             if ($request->filled('title')) {
-                $query->whereRaw("MATCH(title) AGAINST (? IN BOOLEAN MODE)", [$request->title]);
+                $searchTerm = $request->title;
+                
+                // إذا كان بحث بكلمة واحدة - استخدم FULLTEXT (سريع)
+                if (str_word_count($searchTerm) == 1) {
+                    $query->whereRaw("MATCH(title) AGAINST (? IN BOOLEAN MODE)", [$searchTerm]);
+                } else {
+                    // إذا كان بحث بعبارة - استخدم LIKE (دقيق)
+                    $query->where('title', 'like', '%' . $searchTerm . '%');
+                }
             }
             if ($request->filled('specialization_id')) {
                 $query->where('specialization_id', $request->specialization_id);

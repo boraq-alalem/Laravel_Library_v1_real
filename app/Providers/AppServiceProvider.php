@@ -19,12 +19,6 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        // تفعيل مراقبة الاستعلامات البطيئة
-        \App\Services\PerformanceMonitor::trackSlowQueries();
-        
-        // تحميل الكاش المسبق
-        if (app()->environment('production')) {
-            \App\Services\AdvancedCacheService::warmCache();
-        }
+        // تم تعطيل الخدمات مؤقتاً لحل مشكلة قاعدة البيانات
     }
 }
