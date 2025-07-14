@@ -108,26 +108,29 @@ class StatsController extends Controller
         $page = $request->get('page', 1);
         $perPage = $request->get('per_page', 14);
         
-        // الكاش لمدة 30 دقيقة بدلاً من الكاش الدائم لتفادي البيانات القديمة
-        return Cache::remember('latest_theses_' . $page . '_' . $perPage, 1800, function() use ($page, $perPage) {
-            $total = Thesis::count();
+        // كاش أطول مع تحسين الاستعلام
+        return Cache::remember('latest_theses_' . $page . '_' . $perPage, 3600, function() use ($page, $perPage) {
+            // استعلام محسن بدون count منفصل
             $theses = Thesis::select('id', 'title', 'year', 'pdf_path', 'author_id', 'university_id', 'specialization_id', 'degree_id')
                 ->with([
                     'author:id,name',
-                    'university:id,name',
+                    'university:id,name', 
                     'specialization:id,name',
                     'degree:id,name'
                 ])
                 ->latest('id')
-                ->skip(($page - 1) * $perPage)
-                ->take($perPage)
+                ->offset(($page - 1) * $perPage)
+                ->limit($perPage)
                 ->get();
+                
+            // تقدير العدد الكلي بدلاً من count دقيق
+            $estimatedTotal = ($page - 1) * $perPage + $theses->count() + ($theses->count() == $perPage ? $perPage : 0);
+            
             $result = $theses->map(function($thesis) {
                 return [
                     'id' => $thesis->id,
                     'title' => $thesis->title,
                     'year' => $thesis->year,
-                    // تشفير مسار PDF فقط بدون أي دومين أو بادئة
                     'pdf_path' => $thesis->pdf_path ? '/api/pdf/' . PdfPathHelper::encryptPath($thesis->pdf_path) : null,
                     'university' => $thesis->university ? [
                         'id' => $thesis->university->id,
@@ -147,17 +150,18 @@ class StatsController extends Controller
                     ] : null,
                 ];
             });
-            return response()->json([
+            
+            return [
                 'data' => $result->values(),
                 'pagination' => [
                     'current_page' => $page,
                     'per_page' => $perPage,
-                    'total' => $total,
-                    'last_page' => ceil($total / $perPage),
+                    'total' => $estimatedTotal,
+                    'last_page' => ceil($estimatedTotal / $perPage),
                     'from' => ($page - 1) * $perPage + 1,
-                    'to' => min($page * $perPage, $total)
+                    'to' => ($page - 1) * $perPage + $theses->count()
                 ]
-            ]);
+            ];
         });
     }
 
@@ -165,9 +169,9 @@ class StatsController extends Controller
     {
         $page = $request->get('page', 1);
         $perPage = $request->get('per_page', 14);
-        $cacheKey = 'last_successful_search:' . md5($request->fullUrl());
+        $cacheKey = 'search_theses:' . md5($request->fullUrl());
         
-        return Cache::remember($cacheKey, 1800, function() use ($request, $page, $perPage) {
+        return Cache::remember($cacheKey, 3600, function() use ($request, $page, $perPage) {
             $query = Thesis::select('id', 'title', 'year', 'pdf_path', 'author_id', 'university_id', 'specialization_id', 'degree_id')
                 ->with([
                     'author:id,name',
@@ -175,23 +179,22 @@ class StatsController extends Controller
                     'specialization:id,name', 
                     'degree:id,name'
                 ]);
+                
+            // تحسين البحث بالمؤلف
             if ($request->filled('author')) {
-                $query->whereHas('author', function($q) use ($request) {
-                    $q->where('name', 'like', '%' . $request->author . '%');
+                $authorName = $request->author;
+                $query->whereHas('author', function($q) use ($authorName) {
+                    $q->where('name', 'like', $authorName . '%'); // بداية الاسم فقط
                 });
             }
+            
+            // تحسين البحث بالعنوان
             if ($request->filled('title')) {
                 $searchTerm = $request->title;
-                
-                // إذا كان بحث بكلمة واحدة - استخدم FULLTEXT (سريع)
-                if (str_word_count($searchTerm) == 1) {
-                    // تأكد من وجود FULLTEXT INDEX على عمود title في جدول الرسائل لتحسين الأداء
-                    $query->whereRaw("MATCH(title) AGAINST (? IN BOOLEAN MODE)", [$searchTerm]);
-                } else {
-                    // إذا كان بحث بعبارة - استخدم LIKE (دقيق)
-                    $query->where('title', 'like', '%' . $searchTerm . '%');
-                }
+                $query->where('title', 'like', '%' . $searchTerm . '%');
             }
+            
+            // فلاتر سريعة
             if ($request->filled('specialization_id')) {
                 $query->where('specialization_id', $request->specialization_id);
             }
@@ -205,17 +208,22 @@ class StatsController extends Controller
                 $query->where('year', $request->year);
             }
             
-            $total = $query->count();
+            // جلب البيانات مع تقدير العدد
             $theses = $query->latest('id')
-                ->skip(($page - 1) * $perPage)
-                ->take($perPage)
+                ->offset(($page - 1) * $perPage)
+                ->limit($perPage + 1) // جلب عنصر إضافي للتحقق من وجود صفحة تالية
                 ->get();
+                
+            $hasMore = $theses->count() > $perPage;
+            if ($hasMore) {
+                $theses = $theses->take($perPage);
+            }
+            
             $result = $theses->map(function($thesis) {
                 return [
                     'id' => $thesis->id,
                     'title' => $thesis->title,
                     'year' => $thesis->year,
-                    // تشفير مسار PDF فقط بدون أي دومين أو بادئة
                     'pdf_path' => $thesis->pdf_path ? '/api/pdf/' . PdfPathHelper::encryptPath($thesis->pdf_path) : null,
                     'university' => $thesis->university ? [
                         'id' => $thesis->university->id,
@@ -235,17 +243,17 @@ class StatsController extends Controller
                     ] : null,
                 ];
             });
-            return response()->json([
+            
+            return [
                 'data' => $result->values(),
                 'pagination' => [
                     'current_page' => $page,
                     'per_page' => $perPage,
-                    'total' => $total,
-                    'last_page' => ceil($total / $perPage),
+                    'has_more' => $hasMore,
                     'from' => ($page - 1) * $perPage + 1,
-                    'to' => min($page * $perPage, $total)
+                    'to' => ($page - 1) * $perPage + $theses->count()
                 ]
-            ]);
+            ];
         });
     }
 
