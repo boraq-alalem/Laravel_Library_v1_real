@@ -646,23 +646,73 @@ class StatsController extends Controller
         return response()->json(['message' => 'تم الحذف بنجاح']);
     }
 
-    // جلب آخر 10 عناوين
-    public function latestThesisTitlesSimple()
+    // جلب آخر عناوين مع pagination
+    public function latestThesisTitlesSimple(Request $request)
     {
-        $items = ThesisTitlesSimple::select('id', 'title', 'person_name', 'university')->latest('id')->take(10)->get();
-        return response()->json($items);
+        $page = $request->get('page', 1);
+        $perPage = $request->get('per_page', 14);
+        
+        return Cache::remember('latest_simple_' . $page . '_' . $perPage, 3600, function() use ($page, $perPage) {
+            $items = ThesisTitlesSimple::select('id', 'title', 'person_name', 'university')
+                ->latest('id')
+                ->offset(($page - 1) * $perPage)
+                ->limit($perPage + 1)
+                ->get();
+                
+            $hasMore = $items->count() > $perPage;
+            if ($hasMore) {
+                $items = $items->take($perPage);
+            }
+            
+            return [
+                'data' => $items->values(),
+                'pagination' => [
+                    'current_page' => $page,
+                    'per_page' => $perPage,
+                    'has_more' => $hasMore,
+                    'from' => ($page - 1) * $perPage + 1,
+                    'to' => ($page - 1) * $perPage + $items->count()
+                ]
+            ];
+        });
     }
 
-    // البحث عن طريق العنوان (بحث غير حرفي)
+    // البحث عن طريق العنوان مع pagination
     public function searchThesisTitlesSimple(Request $request)
     {
+        $page = $request->get('page', 1);
+        $perPage = $request->get('per_page', 14);
         $q = $request->input('q');
-        $items = ThesisTitlesSimple::select('id', 'title', 'person_name', 'university')
-            ->when($q, function($query) use ($q) {
-                $query->where('title', 'like', "%$q%");
-            })
-            ->get();
-        return response()->json($items);
+        $cacheKey = 'search_simple:' . md5($request->fullUrl());
+        
+        return Cache::remember($cacheKey, 3600, function() use ($request, $page, $perPage, $q) {
+            $query = ThesisTitlesSimple::select('id', 'title', 'person_name', 'university');
+            
+            if ($q) {
+                $query->where('title', 'like', '%' . $q . '%');
+            }
+            
+            $items = $query->latest('id')
+                ->offset(($page - 1) * $perPage)
+                ->limit($perPage + 1)
+                ->get();
+                
+            $hasMore = $items->count() > $perPage;
+            if ($hasMore) {
+                $items = $items->take($perPage);
+            }
+            
+            return [
+                'data' => $items->values(),
+                'pagination' => [
+                    'current_page' => $page,
+                    'per_page' => $perPage,
+                    'has_more' => $hasMore,
+                    'from' => ($page - 1) * $perPage + 1,
+                    'to' => ($page - 1) * $perPage + $items->count()
+                ]
+            ];
+        });
     }
 
     public function storeThesisTitleSimpleFromQuery(Request $request)
@@ -691,12 +741,35 @@ class StatsController extends Controller
         return response()->json($item);
     }
 
-    // جلب آخر 10 عناصر
-    public function latestReservedThesisTitles()
+    // جلب آخر عناصر مع pagination
+    public function latestReservedThesisTitles(Request $request)
     {
-        $items = ReservedThesisTitle::select('id', 'title', 'person_name', 'university', 'specialization', 'degree', 'date')
-            ->latest('id')->take(10)->get();
-        return response()->json($items);
+        $page = $request->get('page', 1);
+        $perPage = $request->get('per_page', 14);
+        
+        return Cache::remember('latest_reserved_' . $page . '_' . $perPage, 3600, function() use ($page, $perPage) {
+            $items = ReservedThesisTitle::select('id', 'title', 'person_name', 'university', 'specialization', 'degree', 'date')
+                ->latest('id')
+                ->offset(($page - 1) * $perPage)
+                ->limit($perPage + 1)
+                ->get();
+                
+            $hasMore = $items->count() > $perPage;
+            if ($hasMore) {
+                $items = $items->take($perPage);
+            }
+            
+            return [
+                'data' => $items->values(),
+                'pagination' => [
+                    'current_page' => $page,
+                    'per_page' => $perPage,
+                    'has_more' => $hasMore,
+                    'from' => ($page - 1) * $perPage + 1,
+                    'to' => ($page - 1) * $perPage + $items->count()
+                ]
+            ];
+        });
     }
 
     // إضافة عنصر جديد
@@ -744,60 +817,187 @@ class StatsController extends Controller
         return response()->json(['message' => 'تم الحذف بنجاح']);
     }
 
-    // البحث عن طريق العنوان فقط
+    // البحث عن طريق العنوان مع pagination
     public function searchReservedThesisTitles(Request $request)
     {
+        $page = $request->get('page', 1);
+        $perPage = $request->get('per_page', 14);
         $q = $request->input('q');
-        $items = ReservedThesisTitle::select('id', 'title', 'person_name', 'university', 'specialization', 'degree', 'date')
-            ->when($q, function($query) use ($q) {
-                $query->where('title', 'like', "%$q%");
-            })
-            ->get();
-        return response()->json($items);
+        $cacheKey = 'search_reserved:' . md5($request->fullUrl());
+        
+        return Cache::remember($cacheKey, 3600, function() use ($request, $page, $perPage, $q) {
+            $query = ReservedThesisTitle::select('id', 'title', 'person_name', 'university', 'specialization', 'degree', 'date');
+            
+            if ($q) {
+                $query->where('title', 'like', '%' . $q . '%');
+            }
+            
+            $items = $query->latest('id')
+                ->offset(($page - 1) * $perPage)
+                ->limit($perPage + 1)
+                ->get();
+                
+            $hasMore = $items->count() > $perPage;
+            if ($hasMore) {
+                $items = $items->take($perPage);
+            }
+            
+            return [
+                'data' => $items->values(),
+                'pagination' => [
+                    'current_page' => $page,
+                    'per_page' => $perPage,
+                    'has_more' => $hasMore,
+                    'from' => ($page - 1) * $perPage + 1,
+                    'to' => ($page - 1) * $perPage + $items->count()
+                ]
+            ];
+        });
     }
 
-    // البحث عن طريق اسم الشخص فقط في العناوين المحجوزة
+    // البحث عن طريق اسم الشخص مع pagination
     public function searchReservedThesisTitlesByPerson(Request $request)
     {
+        $page = $request->get('page', 1);
+        $perPage = $request->get('per_page', 14);
         $q = $request->input('q');
-        $items = ReservedThesisTitle::select('id', 'title', 'person_name', 'university', 'specialization', 'degree', 'date')
-            ->when($q, function($query) use ($q) {
-                $query->where('person_name', 'like', "%$q%");
-            })
-            ->get();
-        return response()->json($items);
+        $cacheKey = 'search_reserved_person:' . md5($request->fullUrl());
+        
+        return Cache::remember($cacheKey, 3600, function() use ($request, $page, $perPage, $q) {
+            $query = ReservedThesisTitle::select('id', 'title', 'person_name', 'university', 'specialization', 'degree', 'date');
+            
+            if ($q) {
+                $query->where('person_name', 'like', '%' . $q . '%');
+            }
+            
+            $items = $query->latest('id')
+                ->offset(($page - 1) * $perPage)
+                ->limit($perPage + 1)
+                ->get();
+                
+            $hasMore = $items->count() > $perPage;
+            if ($hasMore) {
+                $items = $items->take($perPage);
+            }
+            
+            return [
+                'data' => $items->values(),
+                'pagination' => [
+                    'current_page' => $page,
+                    'per_page' => $perPage,
+                    'has_more' => $hasMore,
+                    'from' => ($page - 1) * $perPage + 1,
+                    'to' => ($page - 1) * $perPage + $items->count()
+                ]
+            ];
+        });
     }
 
-    // البحث عن طريق اسم الشخص فقط في العناوين المحجوزة (للضيوف بدون id)
+    // البحث بالشخص للزوار مع pagination
     public function searchReservedThesisTitlesByPersonForGuests(Request $request)
     {
+        $page = $request->get('page', 1);
+        $perPage = $request->get('per_page', 14);
         $q = $request->input('q');
-        $items = ReservedThesisTitle::select('title', 'person_name', 'university', 'specialization', 'degree', 'date')
-            ->when($q, function($query) use ($q) {
-                $query->where('person_name', 'like', "%$q%");
-            })
-            ->get();
-        return response()->json($items);
+        $cacheKey = 'search_reserved_person_guests:' . md5($request->fullUrl());
+        
+        return Cache::remember($cacheKey, 3600, function() use ($request, $page, $perPage, $q) {
+            $query = ReservedThesisTitle::select('title', 'person_name', 'university', 'specialization', 'degree', 'date');
+            
+            if ($q) {
+                $query->where('person_name', 'like', '%' . $q . '%');
+            }
+            
+            $items = $query->latest('id')
+                ->offset(($page - 1) * $perPage)
+                ->limit($perPage + 1)
+                ->get();
+                
+            $hasMore = $items->count() > $perPage;
+            if ($hasMore) {
+                $items = $items->take($perPage);
+            }
+            
+            return [
+                'data' => $items->values(),
+                'pagination' => [
+                    'current_page' => $page,
+                    'per_page' => $perPage,
+                    'has_more' => $hasMore,
+                    'from' => ($page - 1) * $perPage + 1,
+                    'to' => ($page - 1) * $perPage + $items->count()
+                ]
+            ];
+        });
     }
 
-    // البحث عن طريق العنوان فقط للزوار (title, person_name, university)
+    // البحث للزوار مع pagination
     public function searchReservedThesisTitlesForGuests(Request $request)
     {
+        $page = $request->get('page', 1);
+        $perPage = $request->get('per_page', 14);
         $q = $request->input('q');
-        $items = ReservedThesisTitle::select('title', 'person_name', 'university')
-            ->when($q, function($query) use ($q) {
-                $query->where('title', 'like', "%$q%");
-            })
-            ->get();
-        return response()->json($items);
+        $cacheKey = 'search_reserved_guests:' . md5($request->fullUrl());
+        
+        return Cache::remember($cacheKey, 3600, function() use ($request, $page, $perPage, $q) {
+            $query = ReservedThesisTitle::select('title', 'person_name', 'university');
+            
+            if ($q) {
+                $query->where('title', 'like', '%' . $q . '%');
+            }
+            
+            $items = $query->latest('id')
+                ->offset(($page - 1) * $perPage)
+                ->limit($perPage + 1)
+                ->get();
+                
+            $hasMore = $items->count() > $perPage;
+            if ($hasMore) {
+                $items = $items->take($perPage);
+            }
+            
+            return [
+                'data' => $items->values(),
+                'pagination' => [
+                    'current_page' => $page,
+                    'per_page' => $perPage,
+                    'has_more' => $hasMore,
+                    'from' => ($page - 1) * $perPage + 1,
+                    'to' => ($page - 1) * $perPage + $items->count()
+                ]
+            ];
+        });
     }
 
-    // جلب آخر 10 عناصر للزوار فقط (title, person_name, university)
-    public function latestReservedThesisTitlesForGuests()
+    // جلب آخر عناصر للزوار مع pagination
+    public function latestReservedThesisTitlesForGuests(Request $request)
     {
-        $items = ReservedThesisTitle::select('title', 'person_name', 'university')
-            ->latest('id')->take(10)->get();
-        return response()->json($items);
+        $page = $request->get('page', 1);
+        $perPage = $request->get('per_page', 14);
+        
+        return Cache::remember('latest_reserved_guests_' . $page . '_' . $perPage, 3600, function() use ($page, $perPage) {
+            $items = ReservedThesisTitle::select('title', 'person_name', 'university')
+                ->latest('id')
+                ->offset(($page - 1) * $perPage)
+                ->limit($perPage + 1)
+                ->get();
+                
+            $hasMore = $items->count() > $perPage;
+            if ($hasMore) {
+                $items = $items->take($perPage);
+            }
+            
+            return [
+                'data' => $items->values(),
+                'pagination' => [
+                    'current_page' => $page,
+                    'per_page' => $perPage,
+                    'has_more' => $hasMore,
+                    'from' => ($page - 1) * $perPage + 1,
+                    'to' => ($page - 1) * $perPage + $items->count()
+                ]
+            ];
+        });
     }
 
     // البحث عن الرسائل للزوار بدون أي معرفات
