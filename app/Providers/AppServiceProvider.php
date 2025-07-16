@@ -3,6 +3,10 @@
 namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
+use App\Models\Thesis;
+use App\Models\ReservedThesisTitle;
+use App\Observers\ThesisObserver;
+use App\Observers\ReservedThesisTitleObserver;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -19,6 +23,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        // تم تعطيل الخدمات مؤقتاً لحل مشكلة قاعدة البيانات
+        // تسجيل observers لمسح الكاش
+        Thesis::observe(ThesisObserver::class);
+        ReservedThesisTitle::observe(ReservedThesisTitleObserver::class);
     }
 }

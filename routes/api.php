@@ -79,6 +79,11 @@ Route::get('/reserved-thesis-titles-search-person-guests', [StatsController::cla
 // =====================
 Route::get('/pdf/{token}', [StatsController::class, 'servePdf']);
 
+// =====================
+// 18. مسح الكاش
+// =====================
+Route::post('/clear-cache', [\App\Http\Controllers\Api\CacheController::class, 'clearCache']);
+
 
 // =====================
 // 9. الأدوار والصلاحيات (Roles with Permissions)

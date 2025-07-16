@@ -291,6 +291,11 @@ class StatsController extends Controller
         $oldDir = "$basePath/$oldDegreeFolder/$oldSpecializationFolder/$oldAuthorFolder";
         $oldPdfPath = $thesis->pdf_path;
         $oldJsonFile = $oldAuthorFolder . '.json';
+        
+        // مسح كاش الرسائل قبل التحديث
+        Cache::forget('latest_theses_1_14');
+        Cache::forget('stats_index');
+        Cache::forget('search_theses:' . md5($request->fullUrl()));
 
         // تحديث اسم الشخص إذا تم تعديله
         if ($request->filled('author_name')) {
@@ -380,6 +385,11 @@ class StatsController extends Controller
         // نقل جميع البيانات بما فيها id
         $data = $thesis->toArray();
         ArchiveThesis::create($data);
+        
+        // مسح كاش الرسائل قبل الحذف
+        Cache::forget('latest_theses_1_14');
+        Cache::forget('stats_index');
+        
         $thesis->delete();
         return response()->json(['message' => 'تم نقل الرسالة إلى الأرشيف وحذفها من جدول الرسائل']);
     }
@@ -501,6 +511,10 @@ class StatsController extends Controller
                 'message' => 'العنوان موجود بالفعل'
             ], 409);
         }
+        
+        // مسح كاش الرسائل قبل الإضافة
+        Cache::forget('latest_theses_1_14');
+        Cache::forget('stats_index');
 
         // إنشاء أو جلب الباحث
         $author = Author::firstOrCreate(['name' => $validated['author_name']]);
@@ -789,6 +803,11 @@ class StatsController extends Controller
                 'message' => 'العنوان موجود بالفعل'
             ], 409);
         }
+        
+        // مسح كاش العناوين المحجوزة قبل الإضافة
+        Cache::forget('latest_reserved_1_14');
+        Cache::forget('latest_reserved_guests_1_14');
+        
         $item = ReservedThesisTitle::create($validated);
         return response()->json($item, 201);
     }
@@ -805,6 +824,12 @@ class StatsController extends Controller
             'degree' => 'required|string',
             'date' => 'required|string',
         ]);
+        
+        // مسح كاش العناوين المحجوزة قبل التحديث
+        Cache::forget('latest_reserved_1_14');
+        Cache::forget('latest_reserved_guests_1_14');
+        Cache::forget('search_reserved:' . md5($request->fullUrl()));
+        
         $item->update($validated);
         return response()->json($item);
     }
@@ -813,6 +838,11 @@ class StatsController extends Controller
     public function deleteReservedThesisTitle($id)
     {
         $item = ReservedThesisTitle::findOrFail($id);
+        
+        // مسح كاش العناوين المحجوزة قبل الحذف
+        Cache::forget('latest_reserved_1_14');
+        Cache::forget('latest_reserved_guests_1_14');
+        
         $item->delete();
         return response()->json(['message' => 'تم الحذف بنجاح']);
     }

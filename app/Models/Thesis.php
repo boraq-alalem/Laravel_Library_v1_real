@@ -16,6 +16,17 @@ class Thesis extends Model
         'created_at',
         'updated_at',
     ];
+    
+    /**
+     * The event map for the model.
+     *
+     * @var array
+     */
+    protected $dispatchesEvents = [
+        'created' => \App\Events\ThesisCreated::class,
+        'updated' => \App\Events\ThesisUpdated::class,
+        'deleted' => \App\Events\ThesisDeleted::class,
+    ];
 
     public function university()
     {
