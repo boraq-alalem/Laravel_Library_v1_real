@@ -969,6 +969,8 @@ class StatsController extends Controller
     // البحث عن الرسائل للزوار بدون أي معرفات
     public function searchThesesForGuests(Request $request)
     {
+        $page = $request->get('page', 1);
+        $perPage = $request->get('per_page', 14);
         $query = Thesis::with(['author', 'university', 'specialization', 'degree']);
         if ($request->filled('author')) {
             $query->whereHas('author', function($q) use ($request) {
@@ -990,8 +992,8 @@ class StatsController extends Controller
         if ($request->filled('year')) {
             $query->where('year', $request->year);
         }
-        $theses = $query->latest('id')->get();
-        $result = $theses->map(function($thesis) {
+        $paginated = $query->latest('id')->paginate($perPage, ['*'], 'page', $page);
+        $result = $paginated->map(function($thesis) {
             return [
                 'title' => $thesis->title,
                 'year' => $thesis->year,
@@ -1003,7 +1005,17 @@ class StatsController extends Controller
                 'author' => $thesis->author ? $thesis->author->name : null,
             ];
         });
-        return response()->json($result->values());
+        return response()->json([
+            'data' => $result->values(),
+            'pagination' => [
+                'current_page' => $paginated->currentPage(),
+                'per_page' => $paginated->perPage(),
+                'total' => $paginated->total(),
+                'last_page' => $paginated->lastPage(),
+                'from' => $paginated->firstItem(),
+                'to' => $paginated->lastItem(),
+            ]
+        ]);
     }
 
     // Endpoint: /api/pdf/{token}
