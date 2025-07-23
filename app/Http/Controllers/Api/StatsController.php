@@ -169,92 +169,80 @@ class StatsController extends Controller
     {
         $page = $request->get('page', 1);
         $perPage = $request->get('per_page', 14);
-        $cacheKey = 'search_theses:' . md5($request->fullUrl());
-        
-        return Cache::remember($cacheKey, 3600, function() use ($request, $page, $perPage) {
-            $query = Thesis::select('id', 'title', 'year', 'pdf_path', 'author_id', 'university_id', 'specialization_id', 'degree_id')
-                ->with([
-                    'author:id,name',
-                    'university:id,name',
-                    'specialization:id,name', 
-                    'degree:id,name'
-                ]);
-                
-            // تحسين البحث بالمؤلف
-            if ($request->filled('author')) {
-                $authorName = $request->author;
-                $query->whereHas('author', function($q) use ($authorName) {
-                    $q->where('name', 'like', $authorName . '%'); // بداية الاسم فقط
-                });
-            }
-            
-            // تحسين البحث بالعنوان
-            if ($request->filled('title')) {
-                $searchTerm = $request->title;
-                $query->where('title', 'like', '%' . $searchTerm . '%');
-            }
-            
-            // فلاتر سريعة
-            if ($request->filled('specialization_id')) {
-                $query->where('specialization_id', $request->specialization_id);
-            }
-            if ($request->filled('university_id')) {
-                $query->where('university_id', $request->university_id);
-            }
-            if ($request->filled('degree_id')) {
-                $query->where('degree_id', $request->degree_id);
-            }
-            if ($request->filled('year')) {
-                $query->where('year', $request->year);
-            }
-            
-            // جلب البيانات مع تقدير العدد
-            $theses = $query->latest('id')
-                ->offset(($page - 1) * $perPage)
-                ->limit($perPage + 1) // جلب عنصر إضافي للتحقق من وجود صفحة تالية
-                ->get();
-                
-            $hasMore = $theses->count() > $perPage;
-            if ($hasMore) {
-                $theses = $theses->take($perPage);
-            }
-            
-            $result = $theses->map(function($thesis) {
-                return [
-                    'id' => $thesis->id,
-                    'title' => $thesis->title,
-                    'year' => $thesis->year,
-                    'pdf_path' => $thesis->pdf_path ? '/api/pdf/' . PdfPathHelper::encryptPath($thesis->pdf_path) : null,
-                    'university' => $thesis->university ? [
-                        'id' => $thesis->university->id,
-                        'name' => $thesis->university->name,
-                    ] : null,
-                    'specialization' => $thesis->specialization ? [
-                        'id' => $thesis->specialization->id,
-                        'name' => $thesis->specialization->name,
-                    ] : null,
-                    'degree' => $thesis->degree ? [
-                        'id' => $thesis->degree->id,
-                        'name' => $thesis->degree->name,
-                    ] : null,
-                    'author' => $thesis->author ? [
-                        'id' => $thesis->author->id,
-                        'name' => $thesis->author->name,
-                    ] : null,
-                ];
+        $query = Thesis::select('id', 'title', 'year', 'pdf_path', 'author_id', 'university_id', 'specialization_id', 'degree_id')
+            ->with([
+                'author:id,name',
+                'university:id,name',
+                'specialization:id,name',
+                'degree:id,name'
+            ]);
+
+        // تحسين البحث بالمؤلف
+        if ($request->filled('author')) {
+            $authorName = $request->author;
+            $query->whereHas('author', function($q) use ($authorName) {
+                $q->where('name', 'like', $authorName . '%');
             });
-            
+        }
+
+        // تحسين البحث بالعنوان
+        if ($request->filled('title')) {
+            $searchTerm = $request->title;
+            $query->where('title', 'like', '%' . $searchTerm . '%');
+        }
+
+        // فلاتر سريعة
+        if ($request->filled('specialization_id')) {
+            $query->where('specialization_id', $request->specialization_id);
+        }
+        if ($request->filled('university_id')) {
+            $query->where('university_id', $request->university_id);
+        }
+        if ($request->filled('degree_id')) {
+            $query->where('degree_id', $request->degree_id);
+        }
+        if ($request->filled('year')) {
+            $query->where('year', $request->year);
+        }
+
+        $paginated = $query->latest('id')->paginate($perPage, ['*'], 'page', $page);
+
+        $result = $paginated->map(function($thesis) {
             return [
-                'data' => $result->values(),
-                'pagination' => [
-                    'current_page' => $page,
-                    'per_page' => $perPage,
-                    'has_more' => $hasMore,
-                    'from' => ($page - 1) * $perPage + 1,
-                    'to' => ($page - 1) * $perPage + $theses->count()
-                ]
+                'id' => $thesis->id,
+                'title' => $thesis->title,
+                'year' => $thesis->year,
+                'pdf_path' => $thesis->pdf_path ? '/api/pdf/' . PdfPathHelper::encryptPath($thesis->pdf_path) : null,
+                'university' => $thesis->university ? [
+                    'id' => $thesis->university->id,
+                    'name' => $thesis->university->name,
+                ] : null,
+                'specialization' => $thesis->specialization ? [
+                    'id' => $thesis->specialization->id,
+                    'name' => $thesis->specialization->name,
+                ] : null,
+                'degree' => $thesis->degree ? [
+                    'id' => $thesis->degree->id,
+                    'name' => $thesis->degree->name,
+                ] : null,
+                'author' => $thesis->author ? [
+                    'id' => $thesis->author->id,
+                    'name' => $thesis->author->name,
+                ] : null,
             ];
         });
+
+        return [
+            'data' => $result->values(),
+            'pagination' => [
+                'current_page' => $paginated->currentPage(),
+                'per_page' => $paginated->perPage(),
+                'total' => $paginated->total(),
+                'last_page' => $paginated->lastPage(),
+                'from' => $paginated->firstItem(),
+                'to' => $paginated->lastItem(),
+            ]
+        ];
     }
 
     public function allSpecializations()
@@ -853,36 +841,25 @@ class StatsController extends Controller
         $page = $request->get('page', 1);
         $perPage = $request->get('per_page', 14);
         $q = $request->input('q');
-        $cacheKey = 'search_reserved:' . md5($request->fullUrl());
-        
-        return Cache::remember($cacheKey, 3600, function() use ($request, $page, $perPage, $q) {
-            $query = ReservedThesisTitle::select('id', 'title', 'person_name', 'university', 'specialization', 'degree', 'date');
-            
-            if ($q) {
-                $query->where('title', 'like', '%' . $q . '%');
-            }
-            
-            $items = $query->latest('id')
-                ->offset(($page - 1) * $perPage)
-                ->limit($perPage + 1)
-                ->get();
-                
-            $hasMore = $items->count() > $perPage;
-            if ($hasMore) {
-                $items = $items->take($perPage);
-            }
-            
-            return [
-                'data' => $items->values(),
-                'pagination' => [
-                    'current_page' => $page,
-                    'per_page' => $perPage,
-                    'has_more' => $hasMore,
-                    'from' => ($page - 1) * $perPage + 1,
-                    'to' => ($page - 1) * $perPage + $items->count()
-                ]
-            ];
+        $query = ReservedThesisTitle::select('id', 'title', 'person_name', 'university', 'specialization', 'degree', 'date');
+        if ($q) {
+            $query->where('title', 'like', '%' . $q . '%');
+        }
+        $paginated = $query->latest('id')->paginate($perPage, ['*'], 'page', $page);
+        $result = $paginated->map(function($item) {
+            return $item;
         });
+        return [
+            'data' => $result->values(),
+            'pagination' => [
+                'current_page' => $paginated->currentPage(),
+                'per_page' => $paginated->perPage(),
+                'total' => $paginated->total(),
+                'last_page' => $paginated->lastPage(),
+                'from' => $paginated->firstItem(),
+                'to' => $paginated->lastItem(),
+            ]
+        ];
     }
 
     // البحث عن طريق اسم الشخص مع pagination
@@ -891,36 +868,25 @@ class StatsController extends Controller
         $page = $request->get('page', 1);
         $perPage = $request->get('per_page', 14);
         $q = $request->input('q');
-        $cacheKey = 'search_reserved_person:' . md5($request->fullUrl());
-        
-        return Cache::remember($cacheKey, 3600, function() use ($request, $page, $perPage, $q) {
-            $query = ReservedThesisTitle::select('id', 'title', 'person_name', 'university', 'specialization', 'degree', 'date');
-            
-            if ($q) {
-                $query->where('person_name', 'like', '%' . $q . '%');
-            }
-            
-            $items = $query->latest('id')
-                ->offset(($page - 1) * $perPage)
-                ->limit($perPage + 1)
-                ->get();
-                
-            $hasMore = $items->count() > $perPage;
-            if ($hasMore) {
-                $items = $items->take($perPage);
-            }
-            
-            return [
-                'data' => $items->values(),
-                'pagination' => [
-                    'current_page' => $page,
-                    'per_page' => $perPage,
-                    'has_more' => $hasMore,
-                    'from' => ($page - 1) * $perPage + 1,
-                    'to' => ($page - 1) * $perPage + $items->count()
-                ]
-            ];
+        $query = ReservedThesisTitle::select('id', 'title', 'person_name', 'university', 'specialization', 'degree', 'date');
+        if ($q) {
+            $query->where('person_name', 'like', '%' . $q . '%');
+        }
+        $paginated = $query->latest('id')->paginate($perPage, ['*'], 'page', $page);
+        $result = $paginated->map(function($item) {
+            return $item;
         });
+        return [
+            'data' => $result->values(),
+            'pagination' => [
+                'current_page' => $paginated->currentPage(),
+                'per_page' => $paginated->perPage(),
+                'total' => $paginated->total(),
+                'last_page' => $paginated->lastPage(),
+                'from' => $paginated->firstItem(),
+                'to' => $paginated->lastItem(),
+            ]
+        ];
     }
 
     // البحث بالشخص للزوار مع pagination
@@ -929,36 +895,25 @@ class StatsController extends Controller
         $page = $request->get('page', 1);
         $perPage = $request->get('per_page', 14);
         $q = $request->input('q');
-        $cacheKey = 'search_reserved_person_guests:' . md5($request->fullUrl());
-        
-        return Cache::remember($cacheKey, 3600, function() use ($request, $page, $perPage, $q) {
-            $query = ReservedThesisTitle::select('title', 'person_name', 'university', 'specialization', 'degree', 'date');
-            
-            if ($q) {
-                $query->where('person_name', 'like', '%' . $q . '%');
-            }
-            
-            $items = $query->latest('id')
-                ->offset(($page - 1) * $perPage)
-                ->limit($perPage + 1)
-                ->get();
-                
-            $hasMore = $items->count() > $perPage;
-            if ($hasMore) {
-                $items = $items->take($perPage);
-            }
-            
-            return [
-                'data' => $items->values(),
-                'pagination' => [
-                    'current_page' => $page,
-                    'per_page' => $perPage,
-                    'has_more' => $hasMore,
-                    'from' => ($page - 1) * $perPage + 1,
-                    'to' => ($page - 1) * $perPage + $items->count()
-                ]
-            ];
+        $query = ReservedThesisTitle::select('title', 'person_name', 'university', 'specialization', 'degree', 'date');
+        if ($q) {
+            $query->where('person_name', 'like', '%' . $q . '%');
+        }
+        $paginated = $query->latest('id')->paginate($perPage, ['*'], 'page', $page);
+        $result = $paginated->map(function($item) {
+            return $item;
         });
+        return [
+            'data' => $result->values(),
+            'pagination' => [
+                'current_page' => $paginated->currentPage(),
+                'per_page' => $paginated->perPage(),
+                'total' => $paginated->total(),
+                'last_page' => $paginated->lastPage(),
+                'from' => $paginated->firstItem(),
+                'to' => $paginated->lastItem(),
+            ]
+        ];
     }
 
     // البحث للزوار مع pagination
@@ -967,36 +922,25 @@ class StatsController extends Controller
         $page = $request->get('page', 1);
         $perPage = $request->get('per_page', 14);
         $q = $request->input('q');
-        $cacheKey = 'search_reserved_guests:' . md5($request->fullUrl());
-        
-        return Cache::remember($cacheKey, 3600, function() use ($request, $page, $perPage, $q) {
-            $query = ReservedThesisTitle::select('title', 'person_name', 'university');
-            
-            if ($q) {
-                $query->where('title', 'like', '%' . $q . '%');
-            }
-            
-            $items = $query->latest('id')
-                ->offset(($page - 1) * $perPage)
-                ->limit($perPage + 1)
-                ->get();
-                
-            $hasMore = $items->count() > $perPage;
-            if ($hasMore) {
-                $items = $items->take($perPage);
-            }
-            
-            return [
-                'data' => $items->values(),
-                'pagination' => [
-                    'current_page' => $page,
-                    'per_page' => $perPage,
-                    'has_more' => $hasMore,
-                    'from' => ($page - 1) * $perPage + 1,
-                    'to' => ($page - 1) * $perPage + $items->count()
-                ]
-            ];
+        $query = ReservedThesisTitle::select('title', 'person_name', 'university');
+        if ($q) {
+            $query->where('title', 'like', '%' . $q . '%');
+        }
+        $paginated = $query->latest('id')->paginate($perPage, ['*'], 'page', $page);
+        $result = $paginated->map(function($item) {
+            return $item;
         });
+        return [
+            'data' => $result->values(),
+            'pagination' => [
+                'current_page' => $paginated->currentPage(),
+                'per_page' => $paginated->perPage(),
+                'total' => $paginated->total(),
+                'last_page' => $paginated->lastPage(),
+                'from' => $paginated->firstItem(),
+                'to' => $paginated->lastItem(),
+            ]
+        ];
     }
 
     // جلب آخر عناصر للزوار مع pagination
@@ -1004,30 +948,22 @@ class StatsController extends Controller
     {
         $page = $request->get('page', 1);
         $perPage = $request->get('per_page', 14);
-        
-        return Cache::remember('latest_reserved_guests_' . $page . '_' . $perPage, 3600, function() use ($page, $perPage) {
-            $items = ReservedThesisTitle::select('title', 'person_name', 'university')
-                ->latest('id')
-                ->offset(($page - 1) * $perPage)
-                ->limit($perPage + 1)
-                ->get();
-                
-            $hasMore = $items->count() > $perPage;
-            if ($hasMore) {
-                $items = $items->take($perPage);
-            }
-            
-            return [
-                'data' => $items->values(),
-                'pagination' => [
-                    'current_page' => $page,
-                    'per_page' => $perPage,
-                    'has_more' => $hasMore,
-                    'from' => ($page - 1) * $perPage + 1,
-                    'to' => ($page - 1) * $perPage + $items->count()
-                ]
-            ];
+        $query = ReservedThesisTitle::select('title', 'person_name', 'university');
+        $paginated = $query->latest('id')->paginate($perPage, ['*'], 'page', $page);
+        $result = $paginated->map(function($item) {
+            return $item;
         });
+        return [
+            'data' => $result->values(),
+            'pagination' => [
+                'current_page' => $paginated->currentPage(),
+                'per_page' => $paginated->perPage(),
+                'total' => $paginated->total(),
+                'last_page' => $paginated->lastPage(),
+                'from' => $paginated->firstItem(),
+                'to' => $paginated->lastItem(),
+            ]
+        ];
     }
 
     // البحث عن الرسائل للزوار بدون أي معرفات
