@@ -165,6 +165,52 @@ class StatsController extends Controller
         });
     }
 
+    /**
+     * عرض أحدث الرسائل للضيوف (مماثلة لـ latestTheses)
+     */
+    public function latestThesesForGuests(Request $request)
+    {
+        $page = $request->get('page', 1);
+        $perPage = $request->get('per_page', 14);
+        // يمكن تخصيص الكاش أو التصفية لاحقاً للضيوف
+        return Cache::remember('latest_theses_guests_' . $page . '_' . $perPage, 3600, function() use ($page, $perPage) {
+            $theses = Thesis::select('id', 'title', 'year', 'pdf_path', 'author_id', 'university_id', 'specialization_id', 'degree_id')
+                ->with([
+                    'author:id,name',
+                    'university:id,name',
+                    'specialization:id,name',
+                    'degree:id,name'
+                ])
+                ->latest('id')
+                ->offset(($page - 1) * $perPage)
+                ->limit($perPage)
+                ->get();
+            $estimatedTotal = ($page - 1) * $perPage + $theses->count() + ($theses->count() == $perPage ? $perPage : 0);
+            $result = $theses->map(function($thesis) {
+                return [
+                    'title' => $thesis->title,
+                    'year' => $thesis->year,
+                    'pdf_path' => $thesis->pdf_path ? '/api/pdf/' . PdfPathHelper::encryptPath($thesis->pdf_path) : null,
+                    'university' => $thesis->university ? $thesis->university->name : null,
+                    'specialization' => $thesis->specialization ? $thesis->specialization->name : null,
+                    'degree' => $thesis->degree ? $thesis->degree->name : null,
+                    'author' => $thesis->author ? $thesis->author->name : null,
+                ];
+            });
+            return [
+                'data' => $result->values(),
+                'pagination' => [
+                    'current_page' => $page,
+                    'per_page' => $perPage,
+                    'total' => $estimatedTotal,
+                    'last_page' => ceil($estimatedTotal / $perPage),
+                    'from' => ($page - 1) * $perPage + 1,
+                    'to' => ($page - 1) * $perPage + $theses->count()
+                ]
+            ];
+        });
+    }
+
     public function searchTheses(Request $request)
     {
         $page = $request->get('page', 1);
@@ -997,8 +1043,8 @@ class StatsController extends Controller
             return [
                 'title' => $thesis->title,
                 'year' => $thesis->year,
-                // تشفير مسار PDF للزوار أيضاً
-                'pdf_path' => $thesis->pdf_path ? request()->getSchemeAndHttpHost() . '/api/pdf/' . \App\Helpers\PdfPathHelper::encryptPath($thesis->pdf_path) : null,
+                // إرجاع مسار PDF كمسار نسبي فقط
+                'pdf_path' => $thesis->pdf_path ? '/api/pdf/' . \App\Helpers\PdfPathHelper::encryptPath($thesis->pdf_path) : null,
                 'university' => $thesis->university ? $thesis->university->name : null,
                 'specialization' => $thesis->specialization ? $thesis->specialization->name : null,
                 'degree' => $thesis->degree ? $thesis->degree->name : null,

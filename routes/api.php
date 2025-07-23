@@ -13,6 +13,7 @@ Route::get('/stats', [StatsController::class, 'index']);
 // 2. الرسائل (Theses)
 // =====================
 Route::get('/theses/latest', [StatsController::class, 'latestTheses']);
+Route::get('/theses/latest-guests', [StatsController::class, 'latestThesesForGuests']);
 Route::get('/theses/search', [StatsController::class, 'searchTheses']);
 Route::get('/theses/search-guests', [StatsController::class, 'searchThesesForGuests']);
 Route::get('/theses/{id}', [StatsController::class, 'showThesis']); // البحث عن رسالة بالمعرّف
