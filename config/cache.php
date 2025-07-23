@@ -15,7 +15,14 @@ return [
     |
     */
 
-    'default' => env('CACHE_STORE', 'database'),
+    'default' => env('CACHE_STORE', 'redis'),
+    
+    // إعدادات محسنة للأداء
+    'performance' => [
+        'enable_compression' => true,
+        'cache_responses' => true,
+        'optimize_queries' => true,
+    ],
 
     /*
     |--------------------------------------------------------------------------

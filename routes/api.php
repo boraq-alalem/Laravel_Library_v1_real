@@ -13,6 +13,7 @@ Route::get('/stats', [StatsController::class, 'index']);
 // 2. الرسائل (Theses)
 // =====================
 Route::get('/theses/latest', [StatsController::class, 'latestTheses']);
+Route::get('/theses/latest-guests', [StatsController::class, 'latestThesesForGuests']);
 Route::get('/theses/search', [StatsController::class, 'searchTheses']);
 Route::get('/theses/search-guests', [StatsController::class, 'searchThesesForGuests']);
 Route::get('/theses/{id}', [StatsController::class, 'showThesis']); // البحث عن رسالة بالمعرّف
@@ -78,6 +79,11 @@ Route::get('/reserved-thesis-titles-search-person-guests', [StatsController::cla
 // 8. ملفات PDF المشفرة
 // =====================
 Route::get('/pdf/{token}', [StatsController::class, 'servePdf']);
+
+// =====================
+// 18. مسح الكاش
+// =====================
+Route::post('/clear-cache', [\App\Http\Controllers\Api\CacheController::class, 'clearCache']);
 
 
 // =====================

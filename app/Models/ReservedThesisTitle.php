@@ -11,4 +11,15 @@ class ReservedThesisTitle extends Model
     protected $fillable = [
         'title', 'person_name', 'university', 'specialization', 'degree', 'date'
     ];
+    
+    /**
+     * The event map for the model.
+     *
+     * @var array
+     */
+    protected $dispatchesEvents = [
+        'created' => \App\Events\ReservedThesisTitleCreated::class,
+        'updated' => \App\Events\ReservedThesisTitleUpdated::class,
+        'deleted' => \App\Events\ReservedThesisTitleDeleted::class,
+    ];
 }
